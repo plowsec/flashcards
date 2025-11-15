@@ -1,0 +1,122 @@
+/* Force Dark Toolbar */
+ion-header ion-toolbar {
+  --background: var(--ion-toolbar-background) !important;
+  --color: var(--ion-toolbar-color) !important;
+}
+
+.decks-container {
+  padding: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.deck-card {
+  margin-bottom: 16px;
+}
+
+.deck-stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.deck-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  text-align: center;
+  padding: 20px;
+}
+
+.empty-icon {
+  font-size: 80px;
+  color: var(--ion-color-medium);
+  margin-bottom: 20px;
+}
+
+.empty-state h2 {
+  color: var(--ion-color-dark);
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  color: var(--ion-color-medium);
+
+.section-title {
+  padding: 1rem 1rem 0.5rem 1rem;
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--ion-color-dark);
+}
+
+.folders-section {
+  margin-bottom: 1rem;
+}
+
+.folders-grid {
+  padding: 0 1rem 1rem 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.folder-card {
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin: 0;
+}
+
+.folder-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.folder-card-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.folder-icon {
+  font-size: 2.5rem;
+  color: var(--ion-color-primary);
+}
+
+.folder-card-content h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.folder-card-content p {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.9rem;
+  color: var(--ion-color-medium);
+}
+
+.selected-folders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+}
+
+ion-breadcrumbs {
+  padding: 0.5rem 1rem;
+}
+
+ion-breadcrumb {
+  cursor: pointer;
+}
+}

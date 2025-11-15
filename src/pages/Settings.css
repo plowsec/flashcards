@@ -1,0 +1,88 @@
+.settings-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.api-key-status {
+  margin-bottom: 20px;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.status-indicator.success {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--ion-color-success);
+}
+
+.status-indicator.warning {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--ion-color-warning);
+}
+
+.status-indicator ion-icon {
+  font-size: 24px;
+}
+
+.info-text {
+  margin: 16px 0;
+  line-height: 1.6;
+}
+
+.feature-list {
+  margin: 12px 0;
+  padding-left: 20px;
+  line-height: 1.8;
+}
+
+.feature-list li {
+  margin: 8px 0;
+}
+
+.api-key-input {
+  margin: 20px 0;
+}
+
+.monospace-input {
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.help-text {
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 16px 0;
+  padding: 12px;
+  background-color: rgba(var(--ion-color-primary-rgb), 0.05);
+  border-radius: 8px;
+}
+
+.help-text a {
+  color: var(--ion-color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.help-text a:hover {
+  text-decoration: underline;
+}
+
+.help-text strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--ion-color-primary);
+}

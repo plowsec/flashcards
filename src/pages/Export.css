@@ -1,0 +1,24 @@
+.export-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.export-info {
+  margin-top: 24px;
+  padding: 16px;
+  background: var(--ion-color-light);
+  border-radius: 8px;
+}
+
+.export-info h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 16px;
+  color: var(--ion-color-primary);
+}
+
+.export-info p {
+  margin: 0;
+  color: var(--ion-color-medium);
+  line-height: 1.5;
+}

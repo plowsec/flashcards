@@ -1,0 +1,493 @@
+/* Modern Deck Detail Design */
+
+/* Force Dark Toolbar */
+ion-header ion-toolbar {
+  --background: var(--ion-toolbar-background) !important;
+  --color: var(--ion-toolbar-color) !important;
+}
+
+.deck-detail-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Deck Info Section */
+.deck-info {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, var(--ion-color-primary-tint) 0%, var(--ion-color-light) 100%);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease;
+}
+
+.deck-info:hover {
+  transform: translateY(-2px);
+}
+
+.deck-info p {
+  color: var(--ion-color-dark);
+  line-height: 1.6;
+  margin-bottom: 16px;
+  font-size: 1.05rem;
+}
+
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.sort-controls ion-label {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--ion-color-primary);
+}
+
+.sort-controls ion-select {
+  max-width: 220px;
+  --background: cornflowerblue;
+  --border-radius: 12px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Card Item - Modern Card Design */
+.card-item {
+  margin-bottom: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--ion-card-background);
+  overflow: hidden;
+  position: relative;
+}
+
+.card-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--ion-color-primary);
+}
+
+.card-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.card-item ion-card-content {
+  padding: 20px;
+}
+
+/* Card Header */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--ion-color-light);
+}
+
+.card-header ion-badge {
+  font-size: 0.8rem;
+  padding: 6px 14px;
+  border-radius: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.card-actions ion-button {
+  --border-radius: 10px;
+  --padding-start: 12px;
+  --padding-end: 12px;
+  transition: transform 0.2s ease;
+}
+
+.card-actions ion-button:hover {
+  transform: scale(1.1);
+}
+
+/* Card Content */
+.card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card-side {
+  padding: 16px;
+  background: var(--ion-color-light);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  border-left: 4px solid transparent;
+}
+
+.card-side:hover {
+  background: var(--ion-color-light-shade);
+  border-left-color: var(--ion-color-primary);
+}
+
+.card-side strong {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--ion-color-primary);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+
+/* Markdown Content */
+.markdown-content {
+  margin-top: 8px;
+  line-height: 1.7;
+  color: var(--ion-color-dark);
+}
+
+.markdown-content p {
+  margin: 8px 0;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+  color: var(--ion-color-primary);
+  font-weight: 700;
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+.markdown-content code {
+  background: var(--ion-color-light-shade);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+  font-size: 0.9em;
+  color: var(--ion-color-primary);
+  border: 1px solid var(--ion-color-border);
+}
+
+.markdown-content pre {
+  background: var(--ion-color-light-shade);
+  padding: 16px;
+  border-radius: 10px;
+  overflow-x: auto;
+  border-left: 4px solid var(--ion-color-primary);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.markdown-content pre code {
+  background: none;
+  padding: 0;
+  border: none;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  padding-left: 24px;
+  margin: 8px 0;
+}
+
+.markdown-content li {
+  margin: 4px 0;
+}
+
+/* Card Image */
+.card-image {
+  max-width: 100%;
+  height: auto;
+  margin: 16px auto 0;
+  border-radius: 12px;
+  display: block;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.card-image:hover {
+  transform: scale(1.02);
+}
+
+/* Card Meta */
+.card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 2px solid var(--ion-color-light);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.card-meta small {
+  color: var(--ion-color-medium);
+  font-weight: 500;
+  font-size: 0.85em;
+  background: var(--ion-color-light);
+  padding: 4px 12px;
+  border-radius: 8px;
+}
+
+/* Modal Styling */
+ion-modal ion-content {
+  --background: var(--ion-background-color);
+}
+
+ion-modal ion-item {
+  --background: transparent;
+  --border-color: var(--ion-color-light);
+  margin-bottom: 16px;
+}
+
+ion-modal ion-label {
+  font-weight: 600;
+  color: var(--ion-color-primary);
+  margin-bottom: 8px;
+}
+
+ion-modal ion-textarea,
+ion-modal ion-input {
+  --background: var(--ion-card-background);
+  --padding-start: 16px;
+  --padding-end: 16px;
+  border: 2px solid var(--ion-color-light);
+  border-radius: 12px;
+  margin-top: 8px;
+  transition: all 0.2s ease;
+}
+
+ion-modal ion-textarea:focus-within,
+ion-modal ion-input:focus-within {
+  border-color: var(--ion-color-primary);
+  box-shadow: 0 0 0 3px rgba(var(--ion-color-primary-rgb), 0.1);
+}
+
+/* Markdown Preview */
+.markdown-preview {
+  margin: 20px 0;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--ion-color-light) 0%, white 100%);
+  border-radius: 12px;
+  border-left: 4px solid var(--ion-color-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.markdown-preview ion-label {
+  display: block;
+  margin-bottom: 12px;
+  font-weight: 700;
+  color: var(--ion-color-primary);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Image Preview */
+.image-preview {
+  max-width: 100%;
+  height: auto;
+  margin: 20px auto;
+  border-radius: 12px;
+  border: 3px solid var(--ion-color-light);
+  display: block;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.image-preview:hover {
+  transform: scale(1.02);
+  border-color: var(--ion-color-primary);
+}
+
+/* File Input Styling */
+input[type="file"] {
+  margin-top: 12px;
+  padding: 12px;
+  border: 2px dashed var(--ion-color-light);
+  border-radius: 12px;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--ion-card-background);
+  font-size: 0.9rem;
+}
+
+input[type="file"]:hover {
+  border-color: var(--ion-color-primary);
+  background: var(--ion-color-light);
+}
+
+/* Validation Description */
+.validation-description {
+  display: block;
+  padding: 12px 16px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+  background: var(--ion-color-light);
+  border-radius: 10px;
+  border-left: 3px solid var(--ion-color-primary);
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--ion-color-medium);
+  animation: fadeIn 0.5s ease-out;
+}
+
+.empty-state p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+/* FAB Button Enhancement */
+ion-fab-button {
+  --background: var(--ion-color-primary);
+  --background-activated: var(--ion-color-primary-shade);
+  --box-shadow: 0 8px 24px rgba(var(--ion-color-primary-rgb), 0.4);
+  --border-radius: 16px;
+  transition: all 0.3s ease;
+}
+
+ion-fab-button:hover {
+  transform: scale(1.1) rotate(90deg);
+}
+
+/* Searchbar Enhancement */
+ion-searchbar {
+  --background: var(--ion-color-light);
+  --border-radius: 12px;
+  --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --icon-color: var(--ion-color-primary);
+  --placeholder-color: var(--ion-color-medium);
+  padding: 8px 16px;
+}
+
+/* Toolbar Enhancement */
+ion-toolbar {
+  --background: white;
+  --border-color: var(--ion-color-light);
+}
+
+ion-toolbar ion-button {
+  --border-radius: 10px;
+  transition: transform 0.2s ease;
+}
+
+ion-toolbar ion-button:hover {
+  transform: scale(1.05);
+}
+
+/* Responsive Design */
+@media (min-width: 768px) {
+  .card-content {
+    flex-direction: row;
+  }
+
+  .card-side {
+    flex: 1;
+  }
+
+  .deck-detail-container {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .deck-detail-container {
+    padding: 16px;
+  }
+
+  .card-item ion-card-content {
+    padding: 16px;
+  }
+
+  .card-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .sort-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sort-controls ion-select {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .deck-info {
+    padding: 16px;
+  }
+
+  .card-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .markdown-content {
+    font-size: 0.95em;
+  }
+}
+
+/* Dark Mode - Removed since we're forcing dark theme */
+.deck-folders {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.folder-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.selected-folders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+}
