@@ -103,4 +103,5 @@ export interface ExportData {
   version: string;
   exportDate: Date;
   decks: Deck[];
+  folders?: Folder[]; // Optional for backward compatibility
 }

@@ -326,10 +326,12 @@ export class LocalStorageRepository implements IDataRepository {
   // Export/Import operations
   async exportAllData(): Promise<ExportData> {
     const decks = this.getDecksFromStorage();
+    const folders = this.getFoldersFromStorage();
     return {
       version: '1.0.0',
       exportDate: new Date(),
       decks,
+      folders,
     };
   }
 
@@ -344,6 +346,19 @@ export class LocalStorageRepository implements IDataRepository {
     // Combine with imported decks
     const allDecks = [...decksToKeep, ...data.decks];
     this.saveDecksToStorage(allDecks);
+    
+    // Import folders if present (for backward compatibility, folders might not exist)
+    if (data.folders) {
+      const existingFolders = this.getFoldersFromStorage();
+      const importedFolderIds = new Set(data.folders.map(f => f.id));
+      
+      // Keep existing folders that aren't in the import
+      const foldersToKeep = existingFolders.filter(f => !importedFolderIds.has(f.id));
+      
+      // Combine with imported folders
+      const allFolders = [...foldersToKeep, ...data.folders];
+      this.saveFoldersToStorage(allFolders);
+    }
   }
 
   async exportDeck(deckId: string): Promise<Deck> {

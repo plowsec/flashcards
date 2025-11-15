@@ -134,6 +134,7 @@ const Import: React.FC = () => {
           name: deckName,
           description: `Bulk imported ${cards.length} cards`,
           cards: [],
+          folderIds: [],
         });
         targetDeckId = newDeck.id;
       }
