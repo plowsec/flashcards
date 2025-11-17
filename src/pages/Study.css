@@ -33,6 +33,19 @@ ion-header ion-toolbar {
   gap: 16px;
 }
 
+.explanation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.explanation-header h3 {
+  margin: 0;
+}
+
 .explanation-text {
   line-height: 1.6;
   margin-top: 12px;
@@ -70,6 +83,80 @@ ion-header ion-toolbar {
   padding: 16px;
   background-color: rgba(var(--ion-color-light-rgb), 0.5);
   border-radius: 8px;
+}
+
+/* Edit Card Modal */
+.edit-card-btn {
+  margin-top: 8px;
+}
+
+.edit-card-content {
+  padding: 8px 0;
+}
+
+.edit-card-content h3 {
+  margin-bottom: 8px;
+  color: var(--ion-color-primary);
+  font-size: 1.2rem;
+}
+
+.ai-description {
+  color: var(--ion-color-medium);
+  font-size: 0.9em;
+  margin-bottom: 16px;
+}
+
+.ai-improvements-list {
+  margin-top: 16px;
+}
+
+.ai-improvements-list h4 {
+  margin-bottom: 12px;
+  color: var(--ion-color-primary);
+  font-size: 1rem;
+}
+
+.improvement-card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid var(--ion-color-light);
+  margin-bottom: 12px;
+}
+
+.improvement-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: var(--ion-color-primary-tint);
+}
+
+.improvement-card.selected {
+  border-color: var(--ion-color-primary);
+  background: rgba(var(--ion-color-primary-rgb), 0.1);
+  box-shadow: 0 4px 16px rgba(var(--ion-color-primary-rgb), 0.3);
+}
+
+.improvement-preview {
+  margin-bottom: 8px;
+}
+
+.improvement-preview strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--ion-color-medium);
+  font-size: 0.9em;
+}
+
+.improvement-preview .markdown-content {
+  font-size: 0.95em;
+}
+
+.ai-improvements-list h4 {
+  color: var(--ion-color-medium);
+  font-size: 0.9em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
 }
 
 .study-container {
@@ -132,10 +219,51 @@ ion-segment-button {
   font-weight: 600;
   border-radius: 10px;
   transition: all 0.2s ease;
+  min-width: 0;
+  flex: 1;
+}
+
+ion-segment-button ion-label {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 ion-segment-button::part(indicator-background) {
   border-radius: 10px;
+}
+
+/* Icon-based segments */
+.icon-segment ion-segment-button {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 4px;
+}
+
+.icon-segment ion-segment-button ion-icon {
+  font-size: 24px;
+  margin: 0;
+}
+
+.icon-segment ion-segment-button ion-label {
+  font-size: 0.75em;
+  margin: 0;
+}
+
+/* Accordion styling */
+ion-accordion-group {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+ion-accordion {
+  border-radius: 12px;
+}
+
+.mode-select {
+  margin-top: 16px;
+  width: 100%;
 }
 
 .warning-text {
@@ -143,6 +271,18 @@ ion-segment-button::part(indicator-background) {
   margin-top: 12px;
   font-size: 0.9em;
   font-weight: 500;
+}
+
+/* Card Order Toggle */
+.card-order-toggle {
+  text-align: center;
+}
+
+.card-order-toggle .toggle-description {
+  margin-top: 8px;
+  font-size: 0.85em;
+  color: var(--ion-color-medium);
+  line-height: 1.4;
 }
 
 /* No Cards State */
@@ -220,6 +360,27 @@ ion-progress-bar {
   background: var(--ion-card-background);
   position: relative;
   overflow: hidden;
+}
+
+.edit-icon-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  --padding-start: 8px;
+  --padding-end: 8px;
+  min-width: 40px;
+  height: 40px;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.edit-icon-btn:hover {
+  opacity: 1;
+}
+
+.edit-icon-btn ion-icon {
+  font-size: 20px;
 }
 
 .flashcard::before {
@@ -330,6 +491,12 @@ ion-progress-bar {
   gap: 12px;
 }
 
+.rating-grid-simple {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
 .rating-btn {
   height: auto;
   min-height: 90px;
@@ -339,21 +506,38 @@ ion-progress-bar {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.rating-btn:hover {
+.rating-btn-simple {
+  height: auto;
+  min-height: 100px;
+  --border-radius: 16px;
+  font-weight: 700;
+  font-size: 1.1em;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.rating-label-desktop {
+  display: block;
+}
+
+.rating-btn:hover,
+.rating-btn-simple:hover {
   transform: translateY(-3px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
-.rating-btn div {
+.rating-btn div,
+.rating-btn-simple div {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 12px;
+  gap: 8px;
+  padding: 16px;
 }
 
-.rating-btn ion-icon {
-  font-size: 28px;
+.rating-btn ion-icon,
+.rating-btn-simple ion-icon {
+  font-size: 32px;
 }
 
 .rating-btn small {
@@ -671,8 +855,58 @@ ion-progress-bar {
     font-size: 1.6rem;
   }
 
+  ion-segment-button {
+    font-size: 0.8em;
+    min-height: 44px;
+    padding: 4px 8px;
+  }
+
+  ion-segment-button ion-label {
+    font-size: 0.85em;
+  }
+
+  /* Hide text labels on mobile, show only icons */
+  .icon-segment .segment-label-desktop {
+    display: none;
+  }
+
+  .icon-segment ion-segment-button {
+    padding: 10px 4px;
+  }
+
+  .icon-segment ion-segment-button ion-icon {
+    font-size: 28px;
+  }
+
+  /* Hide rating button labels on mobile */
+  .rating-label-desktop {
+    display: none !important;
+  }
+
+  .rating-btn-simple {
+    min-height: 80px;
+  }
+
+  .rating-btn-simple ion-icon {
+    font-size: 36px !important;
+  }
+
+  .rating-btn-simple div {
+    gap: 0 !important;
+  }
+
   .rating-grid {
     grid-template-columns: repeat(6, 1fr);
+  }
+
+  .rating-grid-simple {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .rating-btn-simple {
+    min-height: 90px;
+    font-size: 1em;
   }
 
   .match-grid {
@@ -702,12 +936,79 @@ ion-progress-bar {
 }
 
 @media (max-width: 480px) {
+  ion-segment {
+    padding: 2px;
+  }
+
+  ion-segment-button {
+    font-size: 0.7em;
+    min-height: 40px;
+    padding: 2px 4px;
+  }
+
+  ion-segment-button ion-label {
+    font-size: 0.8em;
+    line-height: 1.2;
+  }
+
+  /* Ensure icons are prominent on small screens */
+  .icon-segment ion-segment-button {
+    padding: 8px 2px;
+  }
+
+  .icon-segment ion-segment-button ion-icon {
+    font-size: 26px;
+  }
+
+  /* Larger icons for rating buttons on small screens */
+  .rating-btn-simple {
+    min-height: 70px;
+  }
+
+  .rating-btn-simple ion-icon {
+    font-size: 40px !important;
+  }
+
   .rating-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+  }
+
+  .rating-grid-simple {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
   }
 
   .rating-btn {
-    min-height: 80px;
+    min-height: 70px;
+    font-size: 0.85em;
+  }
+
+  .rating-btn div {
+    padding: 8px 4px;
+    gap: 4px;
+  }
+
+  .rating-btn ion-icon {
+    font-size: 24px;
+  }
+
+  .rating-btn small {
+    font-size: 0.7em;
+  }
+
+  .rating-btn-simple {
+    min-height: 75px;
+    font-size: 0.9em;
+  }
+
+  .rating-btn-simple div {
+    padding: 10px 6px;
+    gap: 6px;
+  }
+
+  .rating-btn-simple ion-icon {
+    font-size: 28px;
   }
 
   .match-card {

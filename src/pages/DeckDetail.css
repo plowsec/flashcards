@@ -26,7 +26,7 @@ ion-header ion-toolbar {
 .deck-info {
   margin-bottom: 24px;
   padding: 20px;
-  background: linear-gradient(135deg, var(--ion-color-primary-tint) 0%, var(--ion-color-light) 100%);
+  background: lightskyblue;
   border-radius: 16px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   transition: transform 0.2s ease;
@@ -45,26 +45,44 @@ ion-header ion-toolbar {
 
 .sort-controls {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 12px;
   margin-top: 16px;
-  flex-wrap: wrap;
 }
 
-.sort-controls ion-label {
+.sort-controls > ion-label {
   flex-shrink: 0;
   font-weight: 600;
   color: var(--ion-color-primary);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-.sort-controls ion-select {
-  max-width: 220px;
-  --background: cornflowerblue;
-  --border-radius: 12px;
-  --padding-start: 16px;
-  --padding-end: 16px;
-  font-weight: 500;
+.sort-controls ion-segment {
+  --background: var(--ion-color-light);
+  border-radius: 12px;
+  padding: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.sort-controls ion-segment-button {
+  --indicator-color: var(--ion-color-primary);
+  --color: var(--ion-color-medium);
+  --color-checked: white;
+  min-height: 48px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.sort-controls ion-segment-button ion-icon {
+  font-size: 1.3rem;
+  margin-bottom: 2px;
+}
+
+.sort-controls ion-segment-button ion-label {
+  font-size: 0.75rem;
+  margin-top: 2px;
 }
 
 /* Card Item - Modern Card Design */
@@ -291,9 +309,7 @@ ion-modal ion-input:focus-within {
 .markdown-preview {
   margin: 20px 0;
   padding: 16px;
-  background: linear-gradient(135deg, var(--ion-color-light) 0%, white 100%);
   border-radius: 12px;
-  border-left: 4px solid var(--ion-color-primary);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   animation: slideIn 0.3s ease-out;
 }
@@ -362,7 +378,6 @@ input[type="file"]:hover {
   margin-bottom: 16px;
   background: var(--ion-color-light);
   border-radius: 10px;
-  border-left: 3px solid var(--ion-color-primary);
 }
 
 /* Empty State */
@@ -445,13 +460,12 @@ ion-toolbar ion-button:hover {
     gap: 8px;
   }
 
-  .sort-controls {
-    flex-direction: column;
-    align-items: stretch;
+  .sort-controls ion-segment-button ion-label {
+    font-size: 0.7rem;
   }
 
-  .sort-controls ion-select {
-    max-width: 100%;
+  .sort-controls ion-segment-button ion-icon {
+    font-size: 1.1rem;
   }
 }
 
@@ -490,4 +504,127 @@ ion-toolbar ion-button:hover {
   flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
+}
+
+/* New Card Form Improvements - Flat Minimalist Design */
+.markdown-support-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--ion-color-light);
+  border-radius: 12px;
+  margin-bottom: 20px;
+  color: var(--ion-color-medium);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.markdown-support-notice ion-icon {
+  font-size: 1.2rem;
+  color: var(--ion-color-primary);
+}
+
+/* Card-style container for text areas */
+.text-area-card {
+  background: var(--ion-card-background);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.text-area-card ion-item {
+  --background: transparent;
+  --padding-start: 0;
+  --padding-end: 0;
+  margin-bottom: 0;
+}
+
+.form-section {
+  margin: 24px 0;
+  padding: 20px;
+  background: var(--ion-card-background);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.form-section .section-header {
+  margin-bottom: 16px;
+}
+
+.form-section .section-header ion-label {
+  font-weight: 600;
+  color: var(--ion-color-primary);
+  font-size: 0.95rem;
+}
+
+.validation-segment {
+  --background: var(--ion-color-light);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 12px;
+}
+
+.validation-segment ion-segment-button {
+  --indicator-color: var(--ion-color-primary);
+  --color: var(--ion-color-medium);
+  --color-checked: white;
+  min-height: 48px;
+  transition: all 0.2s ease;
+}
+
+.validation-segment ion-segment-button ion-icon {
+  font-size: 1.5rem;
+}
+
+.validation-segment ion-segment-button:hover {
+  --color: var(--ion-color-primary);
+}
+
+.validation-description {
+  display: block;
+  padding: 12px;
+  background: var(--ion-color-light);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.attachment-button {
+  margin: 12px 0;
+  position: relative;
+  --border-radius: 10px;
+}
+
+.file-input-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.image-preview-container {
+  margin: 12px 0;
+  padding: 12px;
+  background: var(--ion-color-light);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.image-preview-container .image-preview {
+  margin: 0 auto 12px;
+  max-height: 200px;
+}
+
+.form-section ion-item {
+  --background: transparent;
+  --padding-start: 0;
+  margin-bottom: 12px;
+}
+
+.form-section ion-checkbox {
+  margin-right: 12px;
 }

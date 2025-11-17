@@ -1,0 +1,53 @@
+.wizard-stage {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.wizard-navigation {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: 1rem;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.loading-state ion-spinner {
+  margin-bottom: 1rem;
+}
+
+.outline-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.card-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .wizard-navigation {
+    flex-direction: column;
+  }
+  
+  .wizard-navigation ion-button {
+    width: 100%;
+  }
+}

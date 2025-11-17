@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Redirect, Route } from 'react-router-dom';
 import { IonApp, IonRouterOutlet, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
@@ -7,6 +8,8 @@ import Study from './pages/Study';
 import Export from './pages/Export';
 import Import from './pages/Import';
 import Settings from './pages/Settings';
+import CourseBuilder from './pages/CourseBuilder';
+import { templateService } from './services/TemplateService';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -40,40 +43,52 @@ import './theme/variables.css';
 
 setupIonicReact();
 
-const App: React.FC = () => (
-  <IonApp>
-    <IonReactRouter>
-      <IonRouterOutlet>
-        <Route exact path="/decks">
-          <Decks />
-        </Route>
-        <Route exact path="/deck/:id">
-          <DeckDetail />
-        </Route>
-        <Route exact path="/study/:id">
-          <Study />
-        </Route>
-        <Route exact path="/deck/:id/export">
-          <Export />
-        </Route>
-        <Route exact path="/deck/:id/import">
-          <Import />
-        </Route>
-        <Route exact path="/export">
-          <Export />
-        </Route>
-        <Route exact path="/import">
-          <Import />
-        </Route>
-        <Route exact path="/settings">
-          <Settings />
-        </Route>
-        <Route exact path="/">
-          <Redirect to="/decks" />
-        </Route>
-      </IonRouterOutlet>
-    </IonReactRouter>
-  </IonApp>
-);
+const App: React.FC = () => {
+  useEffect(() => {
+    // Initialize default templates on app start
+    templateService.initializeDefaultTemplates().catch(error => {
+      console.error('Failed to initialize templates:', error);
+    });
+  }, []);
+
+  return (
+    <IonApp>
+      <IonReactRouter>
+        <IonRouterOutlet>
+          <Route exact path="/decks">
+            <Decks />
+          </Route>
+          <Route exact path="/deck/:id">
+            <DeckDetail />
+          </Route>
+          <Route exact path="/study/:id">
+            <Study />
+          </Route>
+          <Route exact path="/deck/:id/export">
+            <Export />
+          </Route>
+          <Route exact path="/deck/:id/import">
+            <Import />
+          </Route>
+          <Route exact path="/export">
+            <Export />
+          </Route>
+          <Route exact path="/import">
+            <Import />
+          </Route>
+          <Route exact path="/settings">
+            <Settings />
+          </Route>
+          <Route exact path="/course-builder">
+            <CourseBuilder />
+          </Route>
+          <Route exact path="/">
+            <Redirect to="/decks" />
+          </Route>
+        </IonRouterOutlet>
+      </IonReactRouter>
+    </IonApp>
+  );
+};
 
 export default App;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useHistory } from 'react-router-dom';
+import { useIonViewWillEnter } from '@ionic/react';
 import {
   IonContent,
   IonHeader,
@@ -27,12 +28,18 @@ import {
   IonSearchbar,
   IonText,
   IonChip,
+  IonSegment,
+  IonSegmentButton,
+  IonSpinner,
+  IonCheckbox,
 } from '@ionic/react';
-import { add, trash, pencil, play, download, cloudUpload, folder as folderIcon } from 'ionicons/icons';
+import { add, trash, pencil, play, download, cloudUpload, folder as folderIcon, time, flame, calendar, trendingDown, trendingUp, analytics, checkmark, sparkles, lockClosed, lockOpen, key, text, checkmarkCircle, image } from 'ionicons/icons';
+import { openAIService } from '../services/OpenAIService';
+import { GapAnalysis, GeneratedCard } from '../types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getDataRepository } from '../repositories';
-import { Deck, Card, SortOption, AnswerValidation, Folder } from '../types';
+import { Deck, Card, SortOption, AnswerValidation, Folder, SubjectType } from '../types';
 import { AnswerValidationService } from '../services/AnswerValidationService';
 import './DeckDetail.css';
 
@@ -53,15 +60,33 @@ const DeckDetail: React.FC = () => {
   const [cardBackImage, setCardBackImage] = useState('');
   const [answerValidation, setAnswerValidation] = useState<AnswerValidation>('flexible');
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
+  const [showImageUpload, setShowImageUpload] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
+  const [showGapAnalysisModal, setShowGapAnalysisModal] = useState(false);
+  const [gapAnalysis, setGapAnalysis] = useState<GapAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
+  const [suggestedCards, setSuggestedCards] = useState<GeneratedCard[]>([]);
+  const [hasApiKey, setHasApiKey] = useState(false);
+  const [showAIGenerateModal, setShowAIGenerateModal] = useState(false);
+  const [isGeneratingAICards, setIsGeneratingAICards] = useState(false);
+  const [aiCardCount, setAICardCount] = useState(10);
+  const [aiCardTopic, setAICardTopic] = useState('');
 
   const repository = getDataRepository();
 
   useEffect(() => {
     loadDeck();
     loadFolders();
+    setHasApiKey(openAIService.hasApiKey());
   }, [id]);
+
+  // Reload data when view is entered (e.g., returning from import)
+  useIonViewWillEnter(() => {
+    loadDeck();
+    loadFolders();
+  });
 
   useEffect(() => {
     if (deck) {
@@ -123,7 +148,7 @@ const DeckDetail: React.FC = () => {
   };
 
   const getDifficultyValue = (difficulty: Card['difficulty']): number => {
-    const values = { unknown: 0, hard: 1, medium: 2, easy: 3 };
+    const values = { unknown: 0, easy: 1, medium: 2, hard: 3 };
     return values[difficulty];
   };
 
@@ -187,6 +212,7 @@ const DeckDetail: React.FC = () => {
     setCardFrontImage(card.frontImage || '');
     setCardBackImage(card.backImage || '');
     setAnswerValidation(card.answerValidation || 'flexible');
+    setShowImageUpload(!!(card.frontImage || card.backImage));
     setShowModal(true);
   };
 
@@ -198,6 +224,7 @@ const DeckDetail: React.FC = () => {
     setCardFrontImage('');
     setCardBackImage('');
     setAnswerValidation('flexible');
+    setShowImageUpload(false);
   };
 
   const confirmDelete = (cardId: string) => {
@@ -253,6 +280,117 @@ const DeckDetail: React.FC = () => {
     return folders.filter((f) => deck.folderIds.includes(f.id));
   };
 
+  const handleAnalyzeGaps = async () => {
+    if (!deck) return;
+    
+    setIsAnalyzing(true);
+    setShowGapAnalysisModal(true);
+    
+    try {
+      const analysis = await openAIService.analyzeGaps(deck, deck.name);
+      setGapAnalysis(analysis);
+      setSuggestedCards(analysis.suggestedCards);
+      
+      // Save analysis to repository
+      await repository.saveGapAnalysis(analysis);
+    } catch (error: any) {
+      console.error('Error analyzing gaps:', error);
+      alert(error.message || 'Failed to analyze deck gaps');
+      setShowGapAnalysisModal(false);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const toggleSuggestedCard = (cardId: string) => {
+    setSuggestedCards(cards =>
+      cards.map(card =>
+        card.id === cardId ? { ...card, selected: !card.selected } : card
+      )
+    );
+  };
+
+  const handleAddSuggestedCards = async () => {
+    if (!deck) return;
+    
+    try {
+      const selectedCards = suggestedCards.filter(card => card.selected);
+      
+      for (const card of selectedCards) {
+        await repository.createCard(deck.id, {
+          front: card.front,
+          back: card.back,
+          frontImage: card.frontImage,
+          backImage: card.backImage,
+          easeFactor: 2.5,
+          interval: 0,
+          repetitions: 0,
+          nextReviewDate: new Date(),
+          difficulty: 'unknown',
+        });
+      }
+      
+      await loadDeck();
+      setShowSuggestionsModal(false);
+      setShowGapAnalysisModal(false);
+      alert(`Added ${selectedCards.length} cards to the deck!`);
+    } catch (error: any) {
+      console.error('Error adding suggested cards:', error);
+      alert(error.message || 'Failed to add cards');
+    }
+  };
+
+  const handleGenerateAICards = async () => {
+    if (!deck) return;
+    
+    setIsGeneratingAICards(true);
+    
+    try {
+      // Create a simple template based on deck content
+      const template = {
+        id: 'temp',
+        name: 'Question & Answer',
+        subjectType: 'general' as SubjectType,
+        frontLabel: 'Question',
+        backLabel: 'Answer',
+        includeImages: false,
+        includeExamples: true,
+        createdAt: new Date(),
+      };
+      
+      // Create a topic node for generation
+      const topicNode = {
+        id: 'temp',
+        title: aiCardTopic || deck.name,
+        description: deck.description || `Generate flashcards for ${deck.name}`,
+        level: 0,
+        parentId: null,
+        children: [],
+        estimatedCardCount: aiCardCount,
+        status: 'pending' as const,
+      };
+      
+      // Extract existing card fronts to avoid duplicates (only send fronts to save tokens)
+      const existingCardFronts = deck.cards.map(card => card.front);
+      
+      const cards = await openAIService.generateFlashcardsForTopic(
+        topicNode,
+        template,
+        aiCardCount,
+        existingCardFronts
+      );
+      
+      setSuggestedCards(cards);
+      setShowAIGenerateModal(false);
+      setShowSuggestionsModal(true);
+    } catch (error: any) {
+      console.error('Error generating AI cards:', error);
+      alert(error.message || 'Failed to generate flashcards');
+    } finally {
+      setIsGeneratingAICards(false);
+    }
+  };
+
   if (!deck) {
     return null;
   }
@@ -266,6 +404,16 @@ const DeckDetail: React.FC = () => {
           </IonButtons>
           <IonTitle>{deck.name}</IonTitle>
           <IonButtons slot="end">
+            {hasApiKey && (
+              <>
+                <IonButton onClick={() => setShowAIGenerateModal(true)} data-desc="Generate AI Cards">
+                  <IonIcon slot="icon-only" icon={sparkles} />
+                </IonButton>
+                <IonButton onClick={handleAnalyzeGaps} disabled={deck.cards.length === 0} data-desc="Gap Analysis">
+                  <IonIcon slot="icon-only" icon={analytics} />
+                </IonButton>
+              </>
+            )}
             <IonButton onClick={() => setShowFolderModal(true)}>
               <IonIcon slot="icon-only" icon={folderIcon} />
             </IonButton>
@@ -307,17 +455,23 @@ const DeckDetail: React.FC = () => {
             )}
             <div className="sort-controls">
               <IonLabel>Sort by:</IonLabel>
-              <IonSelect
+              <IonSegment
                 value={sortOption}
-                onIonChange={(e) => setSortOption(e.detail.value)}
+                onIonChange={(e) => setSortOption(e.detail.value as SortOption)}
               >
-                <IonSelectOption value="createdAt-desc">Newest First</IonSelectOption>
-                <IonSelectOption value="createdAt-asc">Oldest First</IonSelectOption>
-                <IonSelectOption value="difficulty-desc">Hardest First</IonSelectOption>
-                <IonSelectOption value="difficulty-asc">Easiest First</IonSelectOption>
-                <IonSelectOption value="nextReview-asc">Due Soonest</IonSelectOption>
-                <IonSelectOption value="nextReview-desc">Due Latest</IonSelectOption>
-              </IonSelect>
+                <IonSegmentButton value="createdAt-desc">
+                  <IonIcon icon={time} />
+                  <IonLabel>Newest</IonLabel>
+                </IonSegmentButton>
+                <IonSegmentButton value="difficulty-desc">
+                  <IonIcon icon={flame} />
+                  <IonLabel>Hardest</IonLabel>
+                </IonSegmentButton>
+                <IonSegmentButton value="nextReview-asc">
+                  <IonIcon icon={calendar} />
+                  <IonLabel>Due Soon</IonLabel>
+                </IonSegmentButton>
+              </IonSegment>
             </div>
           </div>
 
@@ -409,76 +563,149 @@ const DeckDetail: React.FC = () => {
             </IonToolbar>
           </IonHeader>
           <IonContent className="ion-padding">
-            <IonItem>
-              <IonLabel position="stacked">Front (Markdown supported) *</IonLabel>
-              <IonTextarea
-                value={cardFront}
-                onIonInput={(e) => setCardFront(e.detail.value || '')}
-                placeholder="Enter question or front side"
-                rows={4}
-              />
-            </IonItem>
-            {cardFront && (
-              <div className="markdown-preview">
-                <IonLabel>Preview:</IonLabel>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{cardFront}</ReactMarkdown>
-              </div>
-            )}
-            <IonItem>
-              <IonLabel>Front Image (optional)</IonLabel>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleImageUpload(e, 'front')}
-              />
-            </IonItem>
-            {cardFrontImage && (
-              <img src={cardFrontImage} alt="Front preview" className="image-preview" />
-            )}
+            <div className="markdown-support-notice">
+              <IonIcon icon={text} />
+              <span>Markdown supported</span>
+            </div>
 
-            <IonItem>
-              <IonLabel position="stacked">Back (Markdown supported) *</IonLabel>
-              <IonTextarea
-                value={cardBack}
-                onIonInput={(e) => setCardBack(e.detail.value || '')}
-                placeholder="Enter answer or back side"
-                rows={4}
-              />
-            </IonItem>
-            {cardBack && (
-              <div className="markdown-preview">
-                <IonLabel>Preview:</IonLabel>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{cardBack}</ReactMarkdown>
-              </div>
-            )}
-            <IonItem>
-              <IonLabel>Back Image (optional)</IonLabel>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleImageUpload(e, 'back')}
-              />
-            </IonItem>
-            {cardBackImage && (
-              <img src={cardBackImage} alt="Back preview" className="image-preview" />
-            )}
+            <div className="text-area-card">
+              <IonItem>
+                <IonLabel position="stacked">Front *</IonLabel>
+                <IonTextarea
+                  value={cardFront}
+                  onIonInput={(e) => setCardFront(e.detail.value || '')}
+                  placeholder="Enter question or front side"
+                  rows={4}
+                />
+              </IonItem>
+              {cardFront && (
+                <div className="markdown-preview">
+                  <IonLabel>Preview:</IonLabel>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{cardFront}</ReactMarkdown>
+                </div>
+              )}
+            </div>
 
-            <IonItem>
-              <IonLabel position="stacked">Answer Validation</IonLabel>
-              <IonSelect
+            <div className="text-area-card">
+              <IonItem>
+                <IonLabel position="stacked">Back *</IonLabel>
+                <IonTextarea
+                  value={cardBack}
+                  onIonInput={(e) => setCardBack(e.detail.value || '')}
+                  placeholder="Enter answer or back side"
+                  rows={4}
+                />
+              </IonItem>
+              {cardBack && (
+                <div className="markdown-preview">
+                  <IonLabel>Preview:</IonLabel>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{cardBack}</ReactMarkdown>
+                </div>
+              )}
+            </div>
+
+            <div className="form-section">
+              <div className="section-header">
+                <IonLabel>Answer Validation</IonLabel>
+              </div>
+              <IonSegment
                 value={answerValidation}
-                onIonChange={(e) => setAnswerValidation(e.detail.value)}
+                onIonChange={(e) => setAnswerValidation(e.detail.value as AnswerValidation)}
+                className="validation-segment"
               >
-                <IonSelectOption value="exact">Exact Match</IonSelectOption>
-                <IonSelectOption value="case-insensitive">Case Insensitive</IonSelectOption>
-                <IonSelectOption value="typo-tolerant">Typo Tolerant</IonSelectOption>
-                <IonSelectOption value="keyword">Keyword Match</IonSelectOption>
-                <IonSelectOption value="flexible">Flexible (Recommended)</IonSelectOption>
-              </IonSelect>
-            </IonItem>
-            <IonText color="medium" className="validation-description">
-              <small>{AnswerValidationService.getValidationDescription(answerValidation)}</small>
-            </IonText>
+                <IonSegmentButton value="exact">
+                  <IonIcon icon={lockClosed} />
+                </IonSegmentButton>
+                <IonSegmentButton value="case-insensitive">
+                  <IonIcon icon={lockOpen} />
+                </IonSegmentButton>
+                <IonSegmentButton value="typo-tolerant">
+                  <IonIcon icon={text} />
+                </IonSegmentButton>
+                <IonSegmentButton value="keyword">
+                  <IonIcon icon={key} />
+                </IonSegmentButton>
+                <IonSegmentButton value="flexible">
+                  <IonIcon icon={checkmarkCircle} />
+                </IonSegmentButton>
+              </IonSegment>
+              <IonText className="validation-description">
+                <small>{AnswerValidationService.getValidationDescription(answerValidation)}</small>
+              </IonText>
+            </div>
+
+            <div className="form-section">
+              <IonItem lines="none">
+                <IonLabel>Support image attachments</IonLabel>
+                <IonCheckbox
+                  slot="start"
+                  checked={showImageUpload}
+                  onIonChange={(e) => setShowImageUpload(e.detail.checked)}
+                />
+              </IonItem>
+              
+              {showImageUpload && (
+                <>
+                  <IonButton
+                    expand="block"
+                    fill="outline"
+                    size="small"
+                    className="attachment-button"
+                  >
+                    <IonIcon slot="start" icon={image} />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, 'front')}
+                      className="file-input-overlay"
+                    />
+                    Add Front Image
+                  </IonButton>
+                  {cardFrontImage && (
+                    <div className="image-preview-container">
+                      <img src={cardFrontImage} alt="Front preview" className="image-preview" />
+                      <IonButton
+                        size="small"
+                        fill="clear"
+                        color="danger"
+                        onClick={() => setCardFrontImage('')}
+                      >
+                        Remove
+                      </IonButton>
+                    </div>
+                  )}
+
+                  <IonButton
+                    expand="block"
+                    fill="outline"
+                    size="small"
+                    className="attachment-button"
+                  >
+                    <IonIcon slot="start" icon={image} />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, 'back')}
+                      className="file-input-overlay"
+                    />
+                    Add Back Image
+                  </IonButton>
+                  {cardBackImage && (
+                    <div className="image-preview-container">
+                      <img src={cardBackImage} alt="Back preview" className="image-preview" />
+                      <IonButton
+                        size="small"
+                        fill="clear"
+                        color="danger"
+                        onClick={() => setCardBackImage('')}
+                      >
+                        Remove
+                      </IonButton>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
 
             <IonButton
               expand="block"
@@ -553,6 +780,199 @@ const DeckDetail: React.FC = () => {
               className="ion-margin-top"
             >
               Update Folders
+            </IonButton>
+          </IonContent>
+        </IonModal>
+
+        {/* Gap Analysis Modal */}
+        <IonModal isOpen={showGapAnalysisModal} onDidDismiss={() => setShowGapAnalysisModal(false)}>
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Deck Gap Analysis</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={() => setShowGapAnalysisModal(false)}>Close</IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+          <IonContent className="ion-padding">
+            {isAnalyzing ? (
+              <div className="loading-state">
+                <IonSpinner />
+                <p>Analyzing deck for gaps...</p>
+              </div>
+            ) : gapAnalysis ? (
+              <>
+                <IonCard>
+                  <IonCardContent>
+                    <h2>Analysis Results</h2>
+                    <p><strong>Deck:</strong> {deck.name}</p>
+                    <p><strong>Cards:</strong> {deck.cards.length}</p>
+                    <p><strong>Analyzed:</strong> {gapAnalysis.analysisDate.toLocaleDateString()}</p>
+                  </IonCardContent>
+                </IonCard>
+
+                {gapAnalysis.missingTopics.length > 0 && (
+                  <IonCard>
+                    <IonCardContent>
+                      <h3>Missing Topics</h3>
+                      <IonList>
+                        {gapAnalysis.missingTopics.map((topic, index) => (
+                          <IonItem key={index}>
+                            <IonLabel>{topic}</IonLabel>
+                          </IonItem>
+                        ))}
+                      </IonList>
+                    </IonCardContent>
+                  </IonCard>
+                )}
+
+                {gapAnalysis.weakAreas.length > 0 && (
+                  <IonCard>
+                    <IonCardContent>
+                      <h3>Weak Areas (Few Cards)</h3>
+                      <IonList>
+                        {gapAnalysis.weakAreas.map((area, index) => (
+                          <IonItem key={index}>
+                            <IonLabel>{area}</IonLabel>
+                          </IonItem>
+                        ))}
+                      </IonList>
+                    </IonCardContent>
+                  </IonCard>
+                )}
+
+                {gapAnalysis.suggestedCards.length > 0 && (
+                  <IonCard>
+                    <IonCardContent>
+                      <h3>Suggested Cards: {gapAnalysis.suggestedCards.length}</h3>
+                      <IonButton
+                        expand="block"
+                        onClick={() => setShowSuggestionsModal(true)}
+                      >
+                        View & Select Suggestions
+                      </IonButton>
+                    </IonCardContent>
+                  </IonCard>
+                )}
+              </>
+            ) : null}
+          </IonContent>
+        </IonModal>
+
+        {/* Suggestions Modal */}
+        <IonModal isOpen={showSuggestionsModal} onDidDismiss={() => setShowSuggestionsModal(false)}>
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Suggested Cards</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={() => setShowSuggestionsModal(false)}>Cancel</IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+          <IonContent className="ion-padding">
+            <IonText color="medium">
+              <p>Selected: {suggestedCards.filter(c => c.selected).length}/{suggestedCards.length} cards</p>
+            </IonText>
+            
+            <IonList>
+              {suggestedCards.map(card => (
+                <IonCard key={card.id}>
+                  <IonCardContent>
+                    <IonItem lines="none">
+                      <IonCheckbox
+                        slot="start"
+                        checked={card.selected}
+                        onIonChange={() => toggleSuggestedCard(card.id)}
+                      />
+                      <IonLabel className="ion-text-wrap">
+                        <h3><strong>Q:</strong> {card.front}</h3>
+                        <p><strong>A:</strong> {card.back.substring(0, 150)}...</p>
+                        {card.explanation && (
+                          <p><em>{card.explanation}</em></p>
+                        )}
+                        <IonBadge color={
+                          card.difficulty === 'easy' ? 'success' :
+                          card.difficulty === 'medium' ? 'warning' :
+                          'danger'
+                        }>
+                          {card.difficulty}
+                        </IonBadge>
+                      </IonLabel>
+                    </IonItem>
+                  </IonCardContent>
+                </IonCard>
+              ))}
+            </IonList>
+
+            <IonButton
+              expand="block"
+              onClick={handleAddSuggestedCards}
+              disabled={!suggestedCards.some(c => c.selected)}
+              className="ion-margin-top"
+            >
+              <IonIcon slot="start" icon={checkmark} />
+              Add Selected Cards ({suggestedCards.filter(c => c.selected).length})
+            </IonButton>
+          </IonContent>
+        </IonModal>
+
+        {/* AI Card Generation Modal */}
+        <IonModal isOpen={showAIGenerateModal} onDidDismiss={() => setShowAIGenerateModal(false)}>
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Generate AI Flashcards</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={() => setShowAIGenerateModal(false)}>Cancel</IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+          <IonContent className="ion-padding">
+            <IonCard>
+              <IonCardContent>
+                <p>Generate flashcards using AI for this deck.</p>
+              </IonCardContent>
+            </IonCard>
+
+            <IonItem>
+              <IonLabel position="stacked">Topic (optional)</IonLabel>
+              <IonInput
+                value={aiCardTopic}
+                onIonInput={(e) => setAICardTopic(e.detail.value || '')}
+                placeholder={`e.g., Advanced concepts in ${deck.name}`}
+              />
+            </IonItem>
+
+            <IonItem>
+              <IonLabel position="stacked">Number of Cards</IonLabel>
+              <IonSelect
+                value={aiCardCount}
+                onIonChange={(e) => setAICardCount(e.detail.value)}
+              >
+                <IonSelectOption value={5}>5 cards</IonSelectOption>
+                <IonSelectOption value={10}>10 cards</IonSelectOption>
+                <IonSelectOption value={15}>15 cards</IonSelectOption>
+                <IonSelectOption value={20}>20 cards</IonSelectOption>
+                <IonSelectOption value={25}>25 cards</IonSelectOption>
+              </IonSelect>
+            </IonItem>
+
+            <IonButton
+              expand="block"
+              onClick={handleGenerateAICards}
+              disabled={isGeneratingAICards}
+              className="ion-margin-top"
+            >
+              {isGeneratingAICards ? (
+                <>
+                  <IonSpinner slot="start" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <IonIcon slot="start" icon={sparkles} />
+                  Generate Cards
+                </>
+              )}
             </IonButton>
           </IonContent>
         </IonModal>

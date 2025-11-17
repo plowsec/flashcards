@@ -76,3 +76,83 @@
   font-family: monospace;
   font-size: 13px;
 }
+
+.import-target-segment {
+  margin: 24px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.import-target-segment ion-segment {
+  max-width: 300px;
+  --background: var(--ion-color-light);
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.import-target-segment ion-segment-button {
+  --indicator-color: var(--ion-color-primary);
+  --color: var(--ion-color-medium);
+  --color-checked: white;
+  min-height: 56px;
+  transition: all 0.2s ease;
+}
+
+.import-target-segment ion-segment-button ion-icon {
+  font-size: 2rem;
+}
+
+.import-target-segment ion-segment-button:hover {
+  transform: scale(1.05);
+}
+
+ion-accordion-group {
+  margin: 16px 0;
+}
+
+ion-accordion {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+ion-accordion ion-item[slot="header"] {
+  --background: var(--ion-color-light);
+  font-weight: 600;
+}
+
+ion-accordion ion-list[slot="content"] {
+  padding: 0;
+}
+
+ion-accordion ion-list[slot="content"] ion-item {
+  --padding-start: 20px;
+  transition: all 0.2s ease;
+}
+
+ion-accordion ion-list[slot="content"] ion-item:hover {
+  --background: var(--ion-color-light);
+}
+
+ion-accordion ion-list[slot="content"] ion-item.selected-deck {
+  --background: var(--ion-color-primary-tint);
+  --color: var(--ion-color-primary-contrast);
+  font-weight: 600;
+}
+
+ion-accordion ion-list[slot="content"] ion-item h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+ion-accordion ion-list[slot="content"] ion-item p {
+  margin: 4px 0 0 0;
+  font-size: 0.85rem;
+  color: var(--ion-color-medium);
+}
+
+ion-accordion ion-list[slot="content"] ion-item.selected-deck p {
+  color: var(--ion-color-primary-shade);
+}

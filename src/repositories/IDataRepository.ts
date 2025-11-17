@@ -1,7 +1,18 @@
 // Data repository interface - abstraction layer for data persistence
 // This allows easy migration to a backend in the future
 
-import { Deck, Card, StudySession, BulkImportData, ExportData, Folder } from '../types';
+import {
+  Deck,
+  Card,
+  StudySession,
+  BulkImportData,
+  ExportData,
+  Folder,
+  DeckTemplate,
+  CourseOutline,
+  CardGenerationBatch,
+  GapAnalysis
+} from '../types';
 
 export interface IDataRepository {
   // Deck operations
@@ -42,4 +53,27 @@ export interface IDataRepository {
 
   // Utility operations
   clearAllData(): Promise<void>;
+
+  // Template operations
+  getAllTemplates(): Promise<DeckTemplate[]>;
+  getTemplateById(id: string): Promise<DeckTemplate | null>;
+  createTemplate(template: Omit<DeckTemplate, 'id' | 'createdAt'>): Promise<DeckTemplate>;
+  updateTemplate(id: string, template: Partial<DeckTemplate>): Promise<DeckTemplate>;
+  deleteTemplate(id: string): Promise<void>;
+  
+  // Course outline operations
+  saveCourseOutline(outline: CourseOutline): Promise<void>;
+  getCourseOutlineById(id: string): Promise<CourseOutline | null>;
+  getAllCourseOutlines(): Promise<CourseOutline[]>;
+  deleteCourseOutline(id: string): Promise<void>;
+  
+  // Card generation batch operations
+  saveCardBatch(batch: CardGenerationBatch): Promise<void>;
+  getCardBatchById(id: string): Promise<CardGenerationBatch | null>;
+  getCardBatchesByOutlineId(outlineId: string): Promise<CardGenerationBatch[]>;
+  deleteCardBatch(id: string): Promise<void>;
+  
+  // Gap analysis operations
+  saveGapAnalysis(analysis: GapAnalysis): Promise<void>;
+  getGapAnalysisByDeckId(deckId: string): Promise<GapAnalysis | null>;
 }

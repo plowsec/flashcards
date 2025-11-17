@@ -2,13 +2,28 @@
 // Client-side only storage using browser's localStorage
 
 import { v4 as uuidv4 } from 'uuid';
-import { Deck, Card, StudySession, BulkImportData, ExportData, Folder } from '../types';
+import {
+  Deck,
+  Card,
+  StudySession,
+  BulkImportData,
+  ExportData,
+  Folder,
+  DeckTemplate,
+  CourseOutline,
+  CardGenerationBatch,
+  GapAnalysis
+} from '../types';
 import { IDataRepository } from './IDataRepository';
 
 const STORAGE_KEYS = {
   DECKS: 'flashcards_decks',
   FOLDERS: 'flashcards_folders',
   STUDY_SESSIONS: 'flashcards_study_sessions',
+  TEMPLATES: 'flashcards_templates',
+  COURSE_OUTLINES: 'flashcards_course_outlines',
+  CARD_BATCHES: 'flashcards_card_batches',
+  GAP_ANALYSES: 'flashcards_gap_analyses',
 };
 
 export class LocalStorageRepository implements IDataRepository {
@@ -391,5 +406,195 @@ export class LocalStorageRepository implements IDataRepository {
     localStorage.removeItem(STORAGE_KEYS.DECKS);
     localStorage.removeItem(STORAGE_KEYS.FOLDERS);
     localStorage.removeItem(STORAGE_KEYS.STUDY_SESSIONS);
+    localStorage.removeItem(STORAGE_KEYS.TEMPLATES);
+    localStorage.removeItem(STORAGE_KEYS.COURSE_OUTLINES);
+    localStorage.removeItem(STORAGE_KEYS.CARD_BATCHES);
+    localStorage.removeItem(STORAGE_KEYS.GAP_ANALYSES);
+  }
+
+  // Template operations
+  private getTemplatesFromStorage(): DeckTemplate[] {
+    const data = localStorage.getItem(STORAGE_KEYS.TEMPLATES);
+    if (!data) return [];
+    
+    const templates = JSON.parse(data);
+    return templates.map((template: any) => ({
+      ...template,
+      createdAt: new Date(template.createdAt),
+    }));
+  }
+
+  private saveTemplatesToStorage(templates: DeckTemplate[]): void {
+    localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(templates));
+  }
+
+  async getAllTemplates(): Promise<DeckTemplate[]> {
+    return this.getTemplatesFromStorage();
+  }
+
+  async getTemplateById(id: string): Promise<DeckTemplate | null> {
+    const templates = this.getTemplatesFromStorage();
+    return templates.find(template => template.id === id) || null;
+  }
+
+  async createTemplate(template: Omit<DeckTemplate, 'id' | 'createdAt'>): Promise<DeckTemplate> {
+    const templates = this.getTemplatesFromStorage();
+    const newTemplate: DeckTemplate = {
+      ...template,
+      id: uuidv4(),
+      createdAt: new Date(),
+    };
+    templates.push(newTemplate);
+    this.saveTemplatesToStorage(templates);
+    return newTemplate;
+  }
+
+  async updateTemplate(id: string, updates: Partial<DeckTemplate>): Promise<DeckTemplate> {
+    const templates = this.getTemplatesFromStorage();
+    const index = templates.findIndex(template => template.id === id);
+    
+    if (index === -1) {
+      throw new Error(`Template with id ${id} not found`);
+    }
+
+    const updatedTemplate: DeckTemplate = {
+      ...templates[index],
+      ...updates,
+      id: templates[index].id,
+      createdAt: templates[index].createdAt,
+    };
+
+    templates[index] = updatedTemplate;
+    this.saveTemplatesToStorage(templates);
+    return updatedTemplate;
+  }
+
+  async deleteTemplate(id: string): Promise<void> {
+    const templates = this.getTemplatesFromStorage();
+    const filteredTemplates = templates.filter(template => template.id !== id);
+    this.saveTemplatesToStorage(filteredTemplates);
+  }
+
+  // Course outline operations
+  private getCourseOutlinesFromStorage(): CourseOutline[] {
+    const data = localStorage.getItem(STORAGE_KEYS.COURSE_OUTLINES);
+    if (!data) return [];
+    
+    const outlines = JSON.parse(data);
+    return outlines.map((outline: any) => ({
+      ...outline,
+      createdAt: new Date(outline.createdAt),
+    }));
+  }
+
+  private saveCourseOutlinesToStorage(outlines: CourseOutline[]): void {
+    localStorage.setItem(STORAGE_KEYS.COURSE_OUTLINES, JSON.stringify(outlines));
+  }
+
+  async saveCourseOutline(outline: CourseOutline): Promise<void> {
+    const outlines = this.getCourseOutlinesFromStorage();
+    const existingIndex = outlines.findIndex(o => o.id === outline.id);
+    
+    if (existingIndex !== -1) {
+      outlines[existingIndex] = outline;
+    } else {
+      outlines.push(outline);
+    }
+    
+    this.saveCourseOutlinesToStorage(outlines);
+  }
+
+  async getCourseOutlineById(id: string): Promise<CourseOutline | null> {
+    const outlines = this.getCourseOutlinesFromStorage();
+    return outlines.find(outline => outline.id === id) || null;
+  }
+
+  async getAllCourseOutlines(): Promise<CourseOutline[]> {
+    return this.getCourseOutlinesFromStorage();
+  }
+
+  async deleteCourseOutline(id: string): Promise<void> {
+    const outlines = this.getCourseOutlinesFromStorage();
+    const filteredOutlines = outlines.filter(outline => outline.id !== id);
+    this.saveCourseOutlinesToStorage(filteredOutlines);
+  }
+
+  // Card generation batch operations
+  private getCardBatchesFromStorage(): CardGenerationBatch[] {
+    const data = localStorage.getItem(STORAGE_KEYS.CARD_BATCHES);
+    if (!data) return [];
+    
+    const batches = JSON.parse(data);
+    return batches.map((batch: any) => ({
+      ...batch,
+      createdAt: new Date(batch.createdAt),
+    }));
+  }
+
+  private saveCardBatchesToStorage(batches: CardGenerationBatch[]): void {
+    localStorage.setItem(STORAGE_KEYS.CARD_BATCHES, JSON.stringify(batches));
+  }
+
+  async saveCardBatch(batch: CardGenerationBatch): Promise<void> {
+    const batches = this.getCardBatchesFromStorage();
+    const existingIndex = batches.findIndex(b => b.id === batch.id);
+    
+    if (existingIndex !== -1) {
+      batches[existingIndex] = batch;
+    } else {
+      batches.push(batch);
+    }
+    
+    this.saveCardBatchesToStorage(batches);
+  }
+
+  async getCardBatchById(id: string): Promise<CardGenerationBatch | null> {
+    const batches = this.getCardBatchesFromStorage();
+    return batches.find(batch => batch.id === id) || null;
+  }
+
+  async getCardBatchesByOutlineId(outlineId: string): Promise<CardGenerationBatch[]> {
+    const batches = this.getCardBatchesFromStorage();
+    return batches.filter(batch => batch.outlineNodeId === outlineId);
+  }
+
+  async deleteCardBatch(id: string): Promise<void> {
+    const batches = this.getCardBatchesFromStorage();
+    const filteredBatches = batches.filter(batch => batch.id !== id);
+    this.saveCardBatchesToStorage(filteredBatches);
+  }
+
+  // Gap analysis operations
+  private getGapAnalysesFromStorage(): GapAnalysis[] {
+    const data = localStorage.getItem(STORAGE_KEYS.GAP_ANALYSES);
+    if (!data) return [];
+    
+    const analyses = JSON.parse(data);
+    return analyses.map((analysis: any) => ({
+      ...analysis,
+      analysisDate: new Date(analysis.analysisDate),
+    }));
+  }
+
+  private saveGapAnalysesToStorage(analyses: GapAnalysis[]): void {
+    localStorage.setItem(STORAGE_KEYS.GAP_ANALYSES, JSON.stringify(analyses));
+  }
+
+  async saveGapAnalysis(analysis: GapAnalysis): Promise<void> {
+    const analyses = this.getGapAnalysesFromStorage();
+    const existingIndex = analyses.findIndex(a => a.deckId === analysis.deckId);
+    
+    if (existingIndex !== -1) {
+      analyses[existingIndex] = analysis;
+    } else {
+      analyses.push(analysis);
+    }
+    
+    this.saveGapAnalysesToStorage(analyses);
+  }
+
+  async getGapAnalysisByDeckId(deckId: string): Promise<GapAnalysis | null> {
+    const analyses = this.getGapAnalysesFromStorage();
+    return analyses.find(analysis => analysis.deckId === deckId) || null;
   }
 }

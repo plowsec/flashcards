@@ -14,8 +14,10 @@ import {
   IonList,
   IonIcon,
   IonAlert,
+  IonSelect,
+  IonSelectOption,
 } from '@ionic/react';
-import { trash, pencil, add, folder as folderIcon } from 'ionicons/icons';
+import { trash, pencil, add, folder as folderIcon, move } from 'ionicons/icons';
 import { Folder } from '../types';
 import { getDataRepository } from '../repositories';
 import './FolderManager.css';
@@ -40,6 +42,9 @@ const FolderManager: React.FC<FolderManagerProps> = ({
   const [folderDescription, setFolderDescription] = useState('');
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [folderToMove, setFolderToMove] = useState<Folder | null>(null);
+  const [targetParentId, setTargetParentId] = useState<string | null>(null);
 
   const repository = getDataRepository();
 
@@ -95,6 +100,28 @@ const FolderManager: React.FC<FolderManagerProps> = ({
     } catch (error) {
       console.error('Error deleting folder:', error);
     }
+  };
+
+  const handleMoveFolder = async () => {
+    if (!folderToMove) return;
+
+    try {
+      await repository.updateFolder(folderToMove.id, {
+        parentId: targetParentId,
+      });
+      await loadFolders();
+      setShowMoveModal(false);
+      setFolderToMove(null);
+      setTargetParentId(null);
+    } catch (error) {
+      console.error('Error moving folder:', error);
+    }
+  };
+
+  const openMoveModal = (folder: Folder) => {
+    setFolderToMove(folder);
+    setTargetParentId(folder.parentId);
+    setShowMoveModal(true);
   };
 
   const openEditModal = (folder: Folder) => {
@@ -183,7 +210,16 @@ const FolderManager: React.FC<FolderManagerProps> = ({
                     <IonButton
                       fill="clear"
                       size="small"
+                      onClick={() => openMoveModal(folder)}
+                      title="Move folder"
+                    >
+                      <IonIcon slot="icon-only" icon={move} />
+                    </IonButton>
+                    <IonButton
+                      fill="clear"
+                      size="small"
                       onClick={() => openEditModal(folder)}
+                      title="Edit folder"
                     >
                       <IonIcon slot="icon-only" icon={pencil} />
                     </IonButton>
@@ -192,6 +228,7 @@ const FolderManager: React.FC<FolderManagerProps> = ({
                       color="danger"
                       size="small"
                       onClick={() => confirmDelete(folder.id)}
+                      title="Delete folder"
                     >
                       <IonIcon slot="icon-only" icon={trash} />
                     </IonButton>
@@ -243,6 +280,59 @@ const FolderManager: React.FC<FolderManagerProps> = ({
         </IonContent>
       </IonModal>
 
+      <IonModal isOpen={showMoveModal} onDidDismiss={() => setShowMoveModal(false)}>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle>Move Folder</IonTitle>
+            <IonButtons slot="end">
+              <IonButton onClick={() => setShowMoveModal(false)}>Cancel</IonButton>
+            </IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding">
+          {folderToMove && (
+            <>
+              <IonItem>
+                <IonLabel>
+                  <h2>Moving: {folderToMove.name}</h2>
+                  <p>Select a new parent folder or move to top level</p>
+                </IonLabel>
+              </IonItem>
+
+              <IonItem>
+                <IonLabel position="stacked">Move to</IonLabel>
+                <IonSelect
+                  value={targetParentId}
+                  onIonChange={(e) => setTargetParentId(e.detail.value)}
+                  placeholder="Select parent folder"
+                >
+                  <IonSelectOption value={null}>Top Level (No Parent)</IonSelectOption>
+                  {folders
+                    .filter(f =>
+                      // Don't allow moving to itself or its own children
+                      f.id !== folderToMove.id &&
+                      !isDescendant(f.id, folderToMove.id, folders)
+                    )
+                    .map(folder => (
+                      <IonSelectOption key={folder.id} value={folder.id}>
+                        {getFolderPath(folder.id, folders)}
+                      </IonSelectOption>
+                    ))}
+                </IonSelect>
+              </IonItem>
+
+              <IonButton
+                expand="block"
+                onClick={handleMoveFolder}
+                className="ion-margin-top"
+              >
+                Move Folder
+              </IonButton>
+            </>
+          )}
+        </IonContent>
+      </IonModal>
+
       <IonAlert
         isOpen={showDeleteAlert}
         onDidDismiss={() => setShowDeleteAlert(false)}
@@ -263,5 +353,24 @@ const FolderManager: React.FC<FolderManagerProps> = ({
     </>
   );
 };
+
+// Helper function to check if a folder is a descendant of another
+function isDescendant(folderId: string, ancestorId: string, folders: Folder[]): boolean {
+  const folder = folders.find(f => f.id === folderId);
+  if (!folder || !folder.parentId) return false;
+  if (folder.parentId === ancestorId) return true;
+  return isDescendant(folder.parentId, ancestorId, folders);
+}
+
+// Helper function to get the full path of a folder
+function getFolderPath(folderId: string, folders: Folder[]): string {
+  const folder = folders.find(f => f.id === folderId);
+  if (!folder) return '';
+  
+  if (!folder.parentId) return folder.name;
+  
+  const parentPath = getFolderPath(folder.parentId, folders);
+  return parentPath ? `${parentPath} / ${folder.name}` : folder.name;
+}
 
 export default FolderManager;

@@ -24,8 +24,11 @@ import {
   IonModal,
   IonTextarea,
   IonSpinner,
+  IonAccordion,
+  IonAccordionGroup,
+  IonItem,
 } from '@ionic/react';
-import { checkmark, close, refresh, timer, bulb, send } from 'ionicons/icons';
+import { checkmark, close, refresh, timer, bulb, send, create, swapHorizontal, save, bookmarkOutline, layers, school, clipboard, shuffle, sparkles, time, trendingDown, help, dice, list, removeCircle, arrowForward, arrowBack, swapVertical } from 'ionicons/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getDataRepository } from '../repositories';
@@ -84,6 +87,18 @@ const Study: React.FC = () => {
   const [conversationHistory, setConversationHistory] = useState<Array<{ question: string; answer: string }>>([]);
   const [isLoadingExplanation, setIsLoadingExplanation] = useState(false);
 
+  // For Edit Card feature
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editCardFront, setEditCardFront] = useState('');
+  const [editCardBack, setEditCardBack] = useState('');
+  const [isGeneratingImprovements, setIsGeneratingImprovements] = useState(false);
+  const [aiImprovements, setAiImprovements] = useState<Array<{ front: string; back: string }>>([]);
+  const [selectedImprovement, setSelectedImprovement] = useState<number | null>(null);
+  const [improveType, setImproveType] = useState<'front' | 'back' | 'both'>('front');
+
+  // For card order reversal
+  const [reverseCardOrder, setReverseCardOrder] = useState(false);
+
   const repository = getDataRepository();
 
   useEffect(() => {
@@ -99,22 +114,23 @@ const Study: React.FC = () => {
   // Add keyboard listener for space to flip card
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      // Only flip on space in flashcard mode when answer is not shown
+      // Flip card on space in flashcard mode (both ways)
+      // But disable when AI explanation modal is open (so user can type in textarea)
       if (
         e.code === 'Space' &&
         sessionStarted &&
         interactionType === 'flashcards' &&
-        !showAnswer &&
-        studyCards.length > 0
+        studyCards.length > 0 &&
+        !showExplainModal
       ) {
         e.preventDefault();
-        setShowAnswer(true);
+        setShowAnswer(!showAnswer);
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [sessionStarted, interactionType, showAnswer, studyCards.length]);
+  }, [sessionStarted, interactionType, showAnswer, studyCards.length, showExplainModal]);
 
   const loadDeck = async () => {
     const loadedDeck = await repository.getDeckById(id);
@@ -479,11 +495,25 @@ const Study: React.FC = () => {
   };
 
   const handleExplainCard = async () => {
-    if (!currentCard || !openAIService.hasApiKey()) {
+    if (!currentCard) {
       return;
     }
 
     setShowExplainModal(true);
+
+    // Check if card has saved explanation
+    if (currentCard.savedExplanation) {
+      setExplanation(currentCard.savedExplanation);
+      setConversationHistory(currentCard.savedFollowUps || []);
+      setIsLoadingExplanation(false);
+      return;
+    }
+
+    // Generate new explanation if no saved one exists
+    if (!openAIService.hasApiKey()) {
+      return;
+    }
+
     setIsLoadingExplanation(true);
     setExplanation('');
     setConversationHistory([]);
@@ -498,6 +528,27 @@ const Study: React.FC = () => {
       setExplanation(`Error: ${error instanceof Error ? error.message : 'Failed to get explanation'}`);
     } finally {
       setIsLoadingExplanation(false);
+    }
+  };
+
+  const handleSaveExplanation = async () => {
+    if (!deck || !currentCard || !explanation) return;
+
+    try {
+      await repository.updateCard(deck.id, currentCard.id, {
+        savedExplanation: explanation,
+        savedFollowUps: conversationHistory,
+        updatedAt: new Date(),
+      });
+
+      // Update local state
+      currentCard.savedExplanation = explanation;
+      currentCard.savedFollowUps = conversationHistory;
+
+      alert('Explanation saved to card!');
+    } catch (error) {
+      console.error('Error saving explanation:', error);
+      alert('Failed to save explanation');
     }
   };
 
@@ -540,6 +591,71 @@ const Study: React.FC = () => {
     setExplanation('');
     setFollowUpQuestion('');
     setConversationHistory([]);
+  };
+
+  const handleEditCard = () => {
+    if (!currentCard) return;
+    setEditCardFront(currentCard.front);
+    setEditCardBack(currentCard.back);
+    setAiImprovements([]);
+    setSelectedImprovement(null);
+    setShowEditModal(true);
+  };
+
+  const handleGenerateImprovements = async () => {
+    if (!openAIService.hasApiKey()) return;
+    
+    setIsGeneratingImprovements(true);
+    try {
+      const improvements = await openAIService.generateCardImprovements(
+        editCardFront,
+        editCardBack,
+        improveType
+      );
+      setAiImprovements(improvements);
+    } catch (error) {
+      console.error('Error generating improvements:', error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Failed to generate improvements'}`);
+    } finally {
+      setIsGeneratingImprovements(false);
+    }
+  };
+
+  const handleSelectImprovement = (index: number) => {
+    setSelectedImprovement(index);
+    const improvement = aiImprovements[index];
+    setEditCardFront(improvement.front);
+    setEditCardBack(improvement.back);
+  };
+
+  const handleSaveEditedCard = async () => {
+    if (!deck || !currentCard || !editCardFront.trim() || !editCardBack.trim()) return;
+
+    try {
+      await repository.updateCard(deck.id, currentCard.id, {
+        front: editCardFront,
+        back: editCardBack,
+        updatedAt: new Date(),
+      });
+
+      // Update local state
+      currentCard.front = editCardFront;
+      currentCard.back = editCardBack;
+      
+      setShowEditModal(false);
+      
+      // Reload deck to get updated data
+      await loadDeck();
+    } catch (error) {
+      console.error('Error saving card:', error);
+      alert('Failed to save card changes');
+    }
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setAiImprovements([]);
+    setSelectedImprovement(null);
   };
 
   const resetSession = () => {
@@ -642,9 +758,28 @@ const Study: React.FC = () => {
     );
   };
 
+  // Get the display content based on reverseCardOrder setting
+  const getCardContent = (side: 'front' | 'back') => {
+    if (!currentCard) return { text: '', image: undefined };
+    
+    if (reverseCardOrder) {
+      // Swap front and back
+      return side === 'front'
+        ? { text: currentCard.back, image: currentCard.backImage }
+        : { text: currentCard.front, image: currentCard.frontImage };
+    }
+    
+    return side === 'front'
+      ? { text: currentCard.front, image: currentCard.frontImage }
+      : { text: currentCard.back, image: currentCard.backImage };
+  };
+
   // Render current question based on type
   const renderQuestion = () => {
     if (!currentCard) return null;
+
+    const frontContent = getCardContent('front');
+    const backContent = getCardContent('back');
 
     // Multiple Choice
     if (currentQuestionType === 'multiple-choice') {
@@ -671,11 +806,11 @@ const Study: React.FC = () => {
               <div className="card-content-display">
                 <div className="markdown-content">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {currentCard.front}
+                    {frontContent.text}
                   </ReactMarkdown>
                 </div>
-                {currentCard.frontImage && (
-                  <img src={currentCard.frontImage} alt="Front" className="card-image" />
+                {frontContent.image && (
+                  <img src={frontContent.image} alt="Front" className="card-image" />
                 )}
               </div>
             </IonCardContent>
@@ -683,7 +818,7 @@ const Study: React.FC = () => {
 
           <div className="multiple-choice-options">
             {multipleChoiceOptions.map((option, index) => {
-              const isCorrect = option.toLowerCase() === currentCard.back.toLowerCase();
+              const isCorrect = option.toLowerCase() === backContent.text.toLowerCase();
               const isSelected = selectedOption === option;
               const showFeedback = selectedOption !== null;
               
@@ -728,11 +863,11 @@ const Study: React.FC = () => {
               <div className="card-content-display">
                 <div className="markdown-content">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {currentCard.front}
+                    {frontContent.text}
                   </ReactMarkdown>
                 </div>
-                {currentCard.frontImage && (
-                  <img src={currentCard.frontImage} alt="Front" className="card-image" />
+                {frontContent.image && (
+                  <img src={frontContent.image} alt="Front" className="card-image" />
                 )}
               </div>
             </IonCardContent>
@@ -754,7 +889,7 @@ const Study: React.FC = () => {
                   <strong>{answerFeedback.isCorrect ? 'Correct!' : 'Incorrect'}</strong>
                   {!answerFeedback.isCorrect && (
                     <div className="correct-answer">
-                      Correct answer: <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentCard.back}</ReactMarkdown>
+                      Correct answer: <ReactMarkdown remarkPlugins={[remarkGfm]}>{backContent.text}</ReactMarkdown>
                     </div>
                   )}
                   <small>Similarity: {Math.round(answerFeedback.similarity * 100)}%</small>
@@ -786,20 +921,31 @@ const Study: React.FC = () => {
           style={{ cursor: !showAnswer ? 'pointer' : 'default' }}
         >
           <IonCardContent>
+            <IonButton
+              fill="clear"
+              color="medium"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEditCard();
+              }}
+              className="edit-icon-btn"
+            >
+              <IonIcon slot="icon-only" icon={create} />
+            </IonButton>
             <div className="card-side-label">
               {showAnswer ? 'Answer' : 'Question'}
             </div>
             <div className="card-content-display">
               <div className="markdown-content">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {showAnswer ? currentCard.back : currentCard.front}
+                  {showAnswer ? backContent.text : frontContent.text}
                 </ReactMarkdown>
               </div>
-              {showAnswer && currentCard.backImage && (
-                <img src={currentCard.backImage} alt="Back" className="card-image" />
+              {showAnswer && backContent.image && (
+                <img src={backContent.image} alt="Back" className="card-image" />
               )}
-              {!showAnswer && currentCard.frontImage && (
-                <img src={currentCard.frontImage} alt="Front" className="card-image" />
+              {!showAnswer && frontContent.image && (
+                <img src={frontContent.image} alt="Front" className="card-image" />
               )}
             </div>
           </IonCardContent>
@@ -816,48 +962,30 @@ const Study: React.FC = () => {
         ) : (
           <div className="rating-buttons">
             <h3>How well did you know this?</h3>
-            <div className="rating-grid">
-              <IonButton color="danger" onClick={() => handleAnswerResult(0)} className="rating-btn">
+            <div className="rating-grid-simple">
+              <IonButton color="danger" onClick={() => handleAnswerResult(1)} className="rating-btn-simple">
                 <div>
                   <IonIcon icon={close} />
-                  <div>Complete Blackout</div>
+                  <div className="rating-label-desktop">Didn't Know</div>
                 </div>
               </IonButton>
-              <IonButton color="danger" onClick={() => handleAnswerResult(1)} className="rating-btn">
+              <IonButton color="warning" onClick={() => handleAnswerResult(3)} className="rating-btn-simple">
                 <div>
-                  <div>Incorrect</div>
-                  <small>But remembered</small>
+                  <IonIcon icon={removeCircle} />
+                  <div className="rating-label-desktop">Hard</div>
                 </div>
               </IonButton>
-              <IonButton color="warning" onClick={() => handleAnswerResult(2)} className="rating-btn">
-                <div>
-                  <div>Incorrect</div>
-                  <small>Seemed easy</small>
-                </div>
-              </IonButton>
-              <IonButton color="warning" onClick={() => handleAnswerResult(3)} className="rating-btn">
-                <div>
-                  <div>Correct</div>
-                  <small>With difficulty</small>
-                </div>
-              </IonButton>
-              <IonButton color="success" onClick={() => handleAnswerResult(4)} className="rating-btn">
-                <div>
-                  <div>Correct</div>
-                  <small>After hesitation</small>
-                </div>
-              </IonButton>
-              <IonButton color="success" onClick={() => handleAnswerResult(5)} className="rating-btn">
+              <IonButton color="success" onClick={() => handleAnswerResult(5)} className="rating-btn-simple">
                 <div>
                   <IonIcon icon={checkmark} />
-                  <div>Perfect!</div>
+                  <div className="rating-label-desktop">Easy</div>
                 </div>
               </IonButton>
             </div>
           </div>
         )}
 
-        {showAnswer && openAIService.hasApiKey() && (
+        {showAnswer && (openAIService.hasApiKey() || currentCard.savedExplanation) && (
           <IonButton
             expand="block"
             fill="outline"
@@ -865,8 +993,8 @@ const Study: React.FC = () => {
             onClick={handleExplainCard}
             className="explain-btn ion-margin-top"
           >
-            <IonIcon slot="start" icon={bulb} />
-            Explain with AI
+            <IonIcon slot="start" icon={currentCard.savedExplanation ? bookmarkOutline : bulb} />
+            {currentCard.savedExplanation ? 'View Saved Explanation' : 'Explain with AI'}
           </IonButton>
         )}
       </div>
@@ -896,44 +1024,50 @@ const Study: React.FC = () => {
               
               <IonCard>
                 <IonCardContent>
-                  <IonLabel>Study Interaction Type:</IonLabel>
+                  <IonLabel>Mode</IonLabel>
                   <IonSegment
                     value={interactionType}
                     onIonChange={(e) => setInteractionType(e.detail.value as StudyInteractionType)}
+                    className="icon-segment"
                   >
                     <IonSegmentButton value="flashcards">
-                      <IonLabel>Flashcards</IonLabel>
+                      <IonIcon icon={layers} />
+                      <IonLabel className="segment-label-desktop">Flashcards</IonLabel>
                     </IonSegmentButton>
                     <IonSegmentButton value="learn">
-                      <IonLabel>Learn</IonLabel>
+                      <IonIcon icon={school} />
+                      <IonLabel className="segment-label-desktop">Learn</IonLabel>
                     </IonSegmentButton>
                     <IonSegmentButton value="test">
-                      <IonLabel>Test</IonLabel>
+                      <IonIcon icon={clipboard} />
+                      <IonLabel className="segment-label-desktop">Test</IonLabel>
                     </IonSegmentButton>
                     <IonSegmentButton value="match">
-                      <IonLabel>Match</IonLabel>
+                      <IonIcon icon={shuffle} />
+                      <IonLabel className="segment-label-desktop">Match</IonLabel>
                     </IonSegmentButton>
                     <IonSegmentButton value="ai-quiz">
-                      <IonLabel>AI Quiz</IonLabel>
+                      <IonIcon icon={sparkles} />
+                      <IonLabel className="segment-label-desktop">AI Quiz</IonLabel>
                     </IonSegmentButton>
                   </IonSegment>
 
                   <div className="interaction-description">
                     {interactionType === 'flashcards' && (
-                      <p>Classic flashcard mode - flip cards to reveal answers and rate your recall.</p>
+                      <p>flip cards to reveal answers and rate your recall.</p>
                     )}
                     {interactionType === 'learn' && (
-                      <p>Adaptive learning - starts with multiple choice, progresses to written answers based on your performance.</p>
+                      <p>starts with multiple choice, progresses to written answers based on your performance.</p>
                     )}
                     {interactionType === 'test' && (
-                      <p>Test yourself - write answers and get instant feedback with validation.</p>
+                      <p>write answers and get instant feedback with validation.</p>
                     )}
                     {interactionType === 'match' && (
-                      <p>Match game - race against the clock to match questions with answers!</p>
+                      <p>race against the clock to match questions with answers!</p>
                     )}
                     {interactionType === 'ai-quiz' && (
                       <p>
-                        AI-powered quiz with confusing wrong answers that test true understanding.
+                        multiple-choice questions with deliberately tricky distractors that test your understanding.
                         {!openAIService.hasApiKey() && (
                           <span style={{ color: 'var(--ion-color-warning)' }}>
                             {' '}(Configure OpenAI API key in Settings to enable)
@@ -947,35 +1081,67 @@ const Study: React.FC = () => {
 
               <IonCard>
                 <IonCardContent>
-                  <IonLabel>Card Selection Mode:</IonLabel>
-                  <IonSelect
+                  <IonLabel>Order</IonLabel>
+                  <IonSegment
                     value={studyMode}
-                    onIonChange={(e) => setStudyMode(e.detail.value)}
-                    className="mode-select"
+                    onIonChange={(e) => setStudyMode(e.detail.value as StudyMode)}
+                    className="icon-segment"
                   >
-                    <IonSelectOption value="due">Due Cards</IonSelectOption>
-                    <IonSelectOption value="difficult">Difficult First</IonSelectOption>
-                    <IonSelectOption value="unknown">Unknown First</IonSelectOption>
-                    <IonSelectOption value="random">Random Order</IonSelectOption>
-                    <IonSelectOption value="sequential">Sequential</IonSelectOption>
-                  </IonSelect>
+                    <IonSegmentButton value="due">
+                      <IonIcon icon={time} />
+                      <IonLabel className="segment-label-desktop">Due</IonLabel>
+                    </IonSegmentButton>
+                    <IonSegmentButton value="difficult">
+                      <IonIcon icon={trendingDown} />
+                      <IonLabel className="segment-label-desktop">Difficult</IonLabel>
+                    </IonSegmentButton>
+                    <IonSegmentButton value="unknown">
+                      <IonIcon icon={help} />
+                      <IonLabel className="segment-label-desktop">Unknown</IonLabel>
+                    </IonSegmentButton>
+                    <IonSegmentButton value="random">
+                      <IonIcon icon={dice} />
+                      <IonLabel className="segment-label-desktop">Random</IonLabel>
+                    </IonSegmentButton>
+                    <IonSegmentButton value="sequential">
+                      <IonIcon icon={list} />
+                      <IonLabel className="segment-label-desktop">Sequential</IonLabel>
+                    </IonSegmentButton>
+                  </IonSegment>
 
                   <div className="mode-description">
                     {studyMode === 'due' && (
-                      <p>Review cards that are due for review based on spaced repetition.</p>
+                      <p>review cards that are due for review based on spaced repetition.</p>
                     )}
                     {studyMode === 'difficult' && (
-                      <p>Start with the most difficult cards first.</p>
+                      <p>start with the most difficult cards first.</p>
                     )}
                     {studyMode === 'unknown' && (
-                      <p>Focus on cards you haven't reviewed yet.</p>
+                      <p>focus on cards you haven't reviewed yet.</p>
                     )}
                     {studyMode === 'random' && (
-                      <p>Study cards in random order.</p>
+                      <p>study cards in random order.</p>
                     )}
                     {studyMode === 'sequential' && (
-                      <p>Study cards in the order they were created.</p>
+                      <p>study cards in the order they were created.</p>
                     )}
+                  </div>
+
+                  <div className="card-order-toggle ion-margin-top">
+                    <IonButton
+                      expand="block"
+                      fill={reverseCardOrder ? 'solid' : 'outline'}
+                      color={reverseCardOrder ? 'primary' : 'medium'}
+                      onClick={() => setReverseCardOrder(!reverseCardOrder)}
+                    >
+                      <IonIcon slot="start" icon={swapHorizontal} />
+                      {reverseCardOrder ? 'Reversed: Back → Front' : 'Normal: Front → Back'}
+                    </IonButton>
+                    <p className="toggle-description">
+                      {reverseCardOrder
+                        ? "Backward recall mode: you'll see the back side first."
+                        : "Forward recall mode: you'll see the front side first."}
+                    </p>
                   </div>
 
                   <IonButton
@@ -1086,16 +1252,38 @@ const Study: React.FC = () => {
                     <p>Getting AI explanation...</p>
                   </div>
                 ) : explanation ? (
-                  <IonCard>
-                    <IonCardContent>
-                      <h3>Explanation</h3>
-                      <div className="markdown-content explanation-text">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {explanation}
-                        </ReactMarkdown>
-                      </div>
-                    </IonCardContent>
-                  </IonCard>
+                  <>
+                    <IonCard>
+                      <IonCardContent>
+                        <div className="explanation-header">
+                          <h3>Explanation</h3>
+                          {!currentCard.savedExplanation && (
+                            <IonButton
+                              size="small"
+                              fill="outline"
+                              color="primary"
+                              onClick={handleSaveExplanation}
+                            >
+                              <IonIcon slot="start" icon={save} />
+                              Save to Card
+                            </IonButton>
+                          )}
+                          {currentCard.savedExplanation && (
+                            <IonText color="success">
+                              <small>
+                                <IonIcon icon={bookmarkOutline} /> Saved
+                              </small>
+                            </IonText>
+                          )}
+                        </div>
+                        <div className="markdown-content explanation-text">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {explanation}
+                          </ReactMarkdown>
+                        </div>
+                      </IonCardContent>
+                    </IonCard>
+                  </>
                 ) : null}
 
                 {conversationHistory.length > 0 && (
@@ -1152,6 +1340,149 @@ const Study: React.FC = () => {
                 )}
               </div>
             )}
+          </IonContent>
+        </IonModal>
+
+        <IonModal isOpen={showEditModal} onDidDismiss={closeEditModal}>
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Edit Card</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={closeEditModal}>Cancel</IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+          <IonContent className="ion-padding">
+            <div className="edit-card-content">
+              <IonCard>
+                <IonCardContent>
+                  <IonLabel position="stacked">Front Side *</IonLabel>
+                  <IonTextarea
+                    value={editCardFront}
+                    onIonInput={(e) => setEditCardFront(e.detail.value || '')}
+                    placeholder="Enter front side content"
+                    rows={4}
+                    className="ion-margin-top"
+                  />
+                </IonCardContent>
+              </IonCard>
+
+              <IonCard>
+                <IonCardContent>
+                  <IonLabel position="stacked">Back Side *</IonLabel>
+                  <IonTextarea
+                    value={editCardBack}
+                    onIonInput={(e) => setEditCardBack(e.detail.value || '')}
+                    placeholder="Enter back side content"
+                    rows={4}
+                    className="ion-margin-top"
+                  />
+                </IonCardContent>
+              </IonCard>
+
+              {openAIService.hasApiKey() && (
+                <IonCard>
+                  <IonCardContent>
+                    <h3>AI Suggestions</h3>
+                    <p className="ai-description">
+                      Get AI-generated alternatives for your flashcard
+                    </p>
+                    
+                    <IonSegment
+                      value={improveType}
+                      onIonChange={(e) => setImproveType(e.detail.value as 'front' | 'back' | 'both')}
+                      className="icon-segment ion-margin-bottom"
+                    >
+                      <IonSegmentButton value="front">
+                        <IonIcon icon={arrowForward} />
+                        <IonLabel className="segment-label-desktop">Front</IonLabel>
+                      </IonSegmentButton>
+                      <IonSegmentButton value="back">
+                        <IonIcon icon={arrowBack} />
+                        <IonLabel className="segment-label-desktop">Back</IonLabel>
+                      </IonSegmentButton>
+                      <IonSegmentButton value="both">
+                        <IonIcon icon={swapVertical} />
+                        <IonLabel className="segment-label-desktop">Both</IonLabel>
+                      </IonSegmentButton>
+                    </IonSegment>
+
+                    <IonButton
+                      expand="block"
+                      onClick={handleGenerateImprovements}
+                      disabled={isGeneratingImprovements || !editCardFront.trim() || !editCardBack.trim()}
+                    >
+                      {isGeneratingImprovements ? (
+                        <>
+                          <IonSpinner slot="start" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <IonIcon slot="start" icon={bulb} />
+                          Generate 3 Alternatives
+                        </>
+                      )}
+                    </IonButton>
+
+                    {aiImprovements.length > 0 && (
+                      <div className="ai-improvements-list ion-margin-top">
+                        <h4>Tap to select:</h4>
+                        {aiImprovements.map((improvement, index) => (
+                          <IonCard
+                            key={index}
+                            className={`improvement-card ${selectedImprovement === index ? 'selected' : ''}`}
+                            onClick={() => handleSelectImprovement(index)}
+                            button
+                          >
+                            <IonCardContent>
+                              {improveType === 'front' && (
+                                <div className="markdown-content">
+                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {improvement.front}
+                                  </ReactMarkdown>
+                                </div>
+                              )}
+                              {improveType === 'back' && (
+                                <div className="markdown-content">
+                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {improvement.back}
+                                  </ReactMarkdown>
+                                </div>
+                              )}
+                              {improveType === 'both' && (
+                                <>
+                                  <div className="markdown-content">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                      {improvement.front}
+                                    </ReactMarkdown>
+                                  </div>
+                                  <div className="markdown-content ion-margin-top" style={{ paddingTop: '12px', borderTop: '1px solid var(--ion-color-light)' }}>
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                      {improvement.back}
+                                    </ReactMarkdown>
+                                  </div>
+                                </>
+                              )}
+                            </IonCardContent>
+                          </IonCard>
+                        ))}
+                      </div>
+                    )}
+                  </IonCardContent>
+                </IonCard>
+              )}
+
+              <IonButton
+                expand="block"
+                onClick={handleSaveEditedCard}
+                disabled={!editCardFront.trim() || !editCardBack.trim()}
+                color="primary"
+                className="ion-margin-top"
+              >
+                Save Changes
+              </IonButton>
+            </div>
           </IonContent>
         </IonModal>
       </IonContent>

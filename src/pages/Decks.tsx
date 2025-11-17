@@ -30,7 +30,8 @@ import {
   IonBreadcrumbs,
   IonBreadcrumb,
 } from '@ionic/react';
-import { add, trash, pencil, play, folder as folderIcon, cloudUpload, settings, folderOpen, chevronForward } from 'ionicons/icons';
+import { add, trash, pencil, play, folder as folderIcon, cloudUpload, settings, folderOpen, chevronForward, sparkles } from 'ionicons/icons';
+import { openAIService } from '../services/OpenAIService';
 import { getDataRepository } from '../repositories';
 import { Deck, Folder } from '../types';
 import { SpacedRepetitionService } from '../services/SpacedRepetitionService';
@@ -49,11 +50,13 @@ const Decks: React.FC = () => {
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [deckToDelete, setDeckToDelete] = useState<string | null>(null);
+  const [hasApiKey, setHasApiKey] = useState(false);
 
   const repository = getDataRepository();
 
   useEffect(() => {
     loadData();
+    setHasApiKey(openAIService.hasApiKey());
   }, [currentFolderId]);
 
   const loadData = async () => {
@@ -225,7 +228,7 @@ const Decks: React.FC = () => {
 
         {/* Folders Section */}
         {getCurrentFolderChildren().length > 0 && (
-          <div className="folders-section">
+          <div className="folders-section" style={{paddingLeft: '20px'}}>
             <h3 className="section-title">Folders</h3>
             <div className="folders-grid">
               {getCurrentFolderChildren().map((folder) => (
@@ -329,6 +332,11 @@ const Decks: React.FC = () => {
             <IonFabButton onClick={() => setShowFolderManager(true)} data-desc="Manage Folders">
               <IonIcon icon={folderIcon} />
             </IonFabButton>
+            {hasApiKey && (
+              <IonFabButton routerLink="/course-builder" data-desc="AI Course Builder" color="secondary">
+                <IonIcon icon={sparkles} />
+              </IonFabButton>
+            )}
           </IonFabList>
         </IonFab>
 

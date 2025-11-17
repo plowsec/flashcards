@@ -20,11 +20,12 @@ import {
   IonLabel,
   IonInput,
   IonItem,
-  IonSelect,
-  IonSelectOption,
-  IonRadioGroup,
-  IonRadio,
+  IonIcon,
+  IonAccordion,
+  IonAccordionGroup,
+  IonList,
 } from '@ionic/react';
+import { addCircle, folderOpen } from 'ionicons/icons';
 import { getDataRepository } from '../repositories';
 import { ExportData, Deck, BulkImportData } from '../types';
 import './Import.css';
@@ -222,16 +223,19 @@ What is TypeScript? | A typed superset of JavaScript
                   </pre>
                 </div>
 
-                <IonRadioGroup value={importTarget} onIonChange={(e) => setImportTarget(e.detail.value)}>
-                  <IonItem>
-                    <IonLabel>Create New Deck</IonLabel>
-                    <IonRadio slot="start" value="new" />
-                  </IonItem>
-                  <IonItem>
-                    <IonLabel>Import to Existing Deck</IonLabel>
-                    <IonRadio slot="start" value="existing" />
-                  </IonItem>
-                </IonRadioGroup>
+                <div className="import-target-segment">
+                  <IonSegment
+                    value={importTarget}
+                    onIonChange={(e) => setImportTarget(e.detail.value as 'new' | 'existing')}
+                  >
+                    <IonSegmentButton value="new">
+                      <IonIcon icon={addCircle} />
+                    </IonSegmentButton>
+                    <IonSegmentButton value="existing">
+                      <IonIcon icon={folderOpen} />
+                    </IonSegmentButton>
+                  </IonSegment>
+                </div>
 
                 {importTarget === 'new' ? (
                   <IonItem>
@@ -243,20 +247,31 @@ What is TypeScript? | A typed superset of JavaScript
                     />
                   </IonItem>
                 ) : (
-                  <IonItem>
-                    <IonLabel position="stacked">Select Deck *</IonLabel>
-                    <IonSelect
-                      value={selectedDeckId}
-                      onIonChange={(e) => setSelectedDeckId(e.detail.value)}
-                      placeholder="Choose a deck"
-                    >
-                      {decks.map((deck) => (
-                        <IonSelectOption key={deck.id} value={deck.id}>
-                          {deck.name} ({deck.cards.length} cards)
-                        </IonSelectOption>
-                      ))}
-                    </IonSelect>
-                  </IonItem>
+                  <IonAccordionGroup>
+                    <IonAccordion value="decks">
+                      <IonItem slot="header">
+                        <IonLabel>Select Existing Deck *</IonLabel>
+                      </IonItem>
+                      <IonList slot="content">
+                        {decks.map((deck) => (
+                          <IonItem
+                            key={deck.id}
+                            button
+                            onClick={() => setSelectedDeckId(deck.id)}
+                            className={selectedDeckId === deck.id ? 'selected-deck' : ''}
+                          >
+                            <IonLabel>
+                              <h3>{deck.name}</h3>
+                              <p>{deck.cards.length} cards</p>
+                            </IonLabel>
+                            {selectedDeckId === deck.id && (
+                              <IonIcon icon={addCircle} slot="end" color="primary" />
+                            )}
+                          </IonItem>
+                        ))}
+                      </IonList>
+                    </IonAccordion>
+                  </IonAccordionGroup>
                 )}
 
                 <IonItem>
