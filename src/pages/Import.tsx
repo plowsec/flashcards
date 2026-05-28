@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useHistory } from 'react-router-dom';
 import {
   IonContent,
@@ -28,6 +28,7 @@ import {
 import { addCircle, folderOpen } from 'ionicons/icons';
 import { getDataRepository } from '../repositories';
 import { ExportData, Deck, BulkImportData } from '../types';
+import { vocabularyCsvToCards } from '../services/CsvImportService';
 import './Import.css';
 
 const Import: React.FC = () => {
@@ -42,16 +43,16 @@ const Import: React.FC = () => {
   const [importTarget, setImportTarget] = useState<'new' | 'existing'>('new');
   const [selectedDeckId, setSelectedDeckId] = useState<string>('');
 
-  const repository = getDataRepository();
+  const repository = useMemo(() => getDataRepository(), []);
+
+  const loadDecks = useCallback(async () => {
+    const loadedDecks = await repository.getAllDecks();
+    setDecks(loadedDecks);
+  }, [repository]);
 
   useEffect(() => {
     loadDecks();
-  }, []);
-
-  const loadDecks = async () => {
-    const loadedDecks = await repository.getAllDecks();
-    setDecks(loadedDecks);
-  };
+  }, [loadDecks]);
 
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -59,6 +60,11 @@ const Import: React.FC = () => {
 
     try {
       const text = await file.text();
+      if (isCsvFile(file)) {
+        await importVocabularyCsv(file, text);
+        return;
+      }
+
       const data = JSON.parse(text);
 
       // Check if it's a full export or single deck
@@ -83,6 +89,42 @@ const Import: React.FC = () => {
       setToastMessage('Import failed. Please check the file format.');
       setShowToast(true);
     }
+  };
+
+  const importVocabularyCsv = async (file: File, text: string) => {
+    const cards = vocabularyCsvToCards(text);
+    let targetDeckId = id;
+
+    if (!targetDeckId) {
+      const newDeck = await repository.createDeck({
+        name: deckNameFromFile(file.name),
+        description: `CSV imported ${cards.length} vocabulary cards`,
+        cards: [],
+        folderIds: [],
+      });
+      targetDeckId = newDeck.id;
+    }
+
+    await repository.bulkImportCards(targetDeckId, {
+      deckName: '',
+      cards,
+    });
+
+    setToastMessage(`Successfully imported ${cards.length} vocabulary cards!`);
+    setShowToast(true);
+    setTimeout(() => {
+      history.push(`/deck/${targetDeckId}`);
+    }, 2000);
+  };
+
+  const isCsvFile = (file: File) => {
+    const mimeType = file.type.toLowerCase();
+    return file.name.toLowerCase().endsWith('.csv') || mimeType.includes('csv');
+  };
+
+  const deckNameFromFile = (fileName: string) => {
+    const withoutExtension = fileName.replace(/\.[^.]+$/, '');
+    return withoutExtension.replace(/[-_]+/g, ' ').trim() || 'Imported Vocabulary';
   };
 
   const handleBulkImport = async () => {
@@ -147,9 +189,9 @@ const Import: React.FC = () => {
       setTimeout(() => {
         history.push(`/deck/${targetDeckId}`);
       }, 2000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Bulk import error:', error);
-      setToastMessage(error.message || 'Bulk import failed. Please check the format.');
+      setToastMessage(errorMessage(error, 'Bulk import failed. Please check the format.'));
       setShowToast(true);
     }
   };
@@ -171,7 +213,7 @@ const Import: React.FC = () => {
             onIonChange={(e) => setImportMode(e.detail.value as 'file' | 'bulk')}
           >
             <IonSegmentButton value="file">
-              <IonLabel>Import File</IonLabel>
+              <IonLabel>JSON / CSV File</IonLabel>
             </IonSegmentButton>
             <IonSegmentButton value="bulk">
               <IonLabel>Bulk Import</IonLabel>
@@ -181,20 +223,25 @@ const Import: React.FC = () => {
           {importMode === 'file' ? (
             <IonCard>
               <IonCardHeader>
-                <IonCardTitle>Import from File</IonCardTitle>
+                <IonCardTitle>Import JSON or Vocabulary CSV</IonCardTitle>
               </IonCardHeader>
               <IonCardContent>
                 <div className="import-info">
                   <p>
-                    Import a previously exported JSON file containing decks and cards.
-                    This can be a single deck or a full backup.
+                    Upload a JSON backup/deck, or a vocabulary CSV with context sentences.
+                  </p>
+                  <p>CSV columns are read from the header row:</p>
+                  <code>word, translation, context, context_translated, occurrences, forms</code>
+                  <p>
+                    CSV cards use the word as the front, then include the translation, source
+                    context, translated context, occurrence count, and forms on the back.
                   </p>
                 </div>
 
                 <div className="file-input-wrapper">
                   <input
                     type="file"
-                    accept=".json"
+                    accept=".json,.csv,application/json,text/csv"
                     onChange={handleFileImport}
                     id="file-input"
                   />
@@ -212,7 +259,11 @@ const Import: React.FC = () => {
               <IonCardContent>
                 <div className="import-info">
                   <h3>Format Instructions</h3>
-                  <p>Enter one card per line in the following format:</p>
+                  <p>
+                    Use this tab for quick pipe-delimited cards. For a vocabulary CSV with
+                    context sentences, switch to JSON / CSV File and upload the .csv file.
+                  </p>
+                  <p>For pasted cards, enter one card per line in the following format:</p>
                   <code>front text | back text</code>
                   <p>Or with images:</p>
                   <code>front text | back text | front_image_url | back_image_url</code>
@@ -312,5 +363,8 @@ What is TypeScript? | A typed superset of JavaScript
     </IonPage>
   );
 };
+
+const errorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
 
 export default Import;
