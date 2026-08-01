@@ -24,12 +24,19 @@ import {
   IonAccordion,
   IonAccordionGroup,
   IonList,
+  IonSpinner,
 } from '@ionic/react';
-import { addCircle, folderOpen } from 'ionicons/icons';
+import { addCircle, alertCircleOutline, checkmarkCircleOutline, folderOpen } from 'ionicons/icons';
 import { getDataRepository } from '../repositories';
 import { ExportData, Deck, BulkImportData } from '../types';
-import { vocabularyCsvToCards } from '../services/CsvImportService';
+import { inspectVocabularyCsv, readImportFileText } from '../services/CsvImportService';
 import './Import.css';
+
+type ImportFeedback = {
+  kind: 'success' | 'error';
+  message: string;
+  fileName: string;
+};
 
 const Import: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
@@ -42,6 +49,9 @@ const Import: React.FC = () => {
   const [decks, setDecks] = useState<Deck[]>([]);
   const [importTarget, setImportTarget] = useState<'new' | 'existing'>('new');
   const [selectedDeckId, setSelectedDeckId] = useState<string>('');
+  const [isImporting, setIsImporting] = useState(false);
+  const [toastColor, setToastColor] = useState<'success' | 'danger'>('success');
+  const [fileFeedback, setFileFeedback] = useState<ImportFeedback | null>(null);
 
   const repository = useMemo(() => getDataRepository(), []);
 
@@ -56,10 +66,13 @@ const Import: React.FC = () => {
 
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || isImporting) return;
+
+    setIsImporting(true);
+    setFileFeedback(null);
 
     try {
-      const text = await file.text();
+      const text = await readImportFileText(file);
       if (isCsvFile(file)) {
         await importVocabularyCsv(file, text);
         return;
@@ -71,47 +84,70 @@ const Import: React.FC = () => {
       if (data.version && data.decks) {
         // Full export
         await repository.importData(data as ExportData);
-        setToastMessage('All data imported successfully!');
+        showFileSuccess(file.name, 'All data imported successfully!');
       } else if (data.id && data.name && data.cards) {
         // Single deck
         await repository.importDeck(data as Deck);
-        setToastMessage('Deck imported successfully!');
+        showFileSuccess(file.name, 'Deck imported successfully!');
       } else {
         throw new Error('Invalid file format');
       }
 
-      setShowToast(true);
       setTimeout(() => {
         history.push('/decks');
       }, 2000);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Import error:', error);
-      setToastMessage('Import failed. Please check the file format.');
-      setShowToast(true);
+      const message = errorMessage(error, 'Import failed. Please check the file format.');
+      setFileFeedback({ kind: 'error', message, fileName: file.name });
+      setShowToast(false);
+    } finally {
+      setIsImporting(false);
+      event.target.value = '';
     }
   };
 
   const importVocabularyCsv = async (file: File, text: string) => {
-    const cards = vocabularyCsvToCards(text);
+    const result = inspectVocabularyCsv(text);
+    const { cards } = result;
     let targetDeckId = id;
+    let createdDeckId: string | undefined;
 
-    if (!targetDeckId) {
-      const newDeck = await repository.createDeck({
-        name: deckNameFromFile(file.name),
-        description: `CSV imported ${cards.length} vocabulary cards`,
-        cards: [],
-        folderIds: [],
+    try {
+      if (!targetDeckId) {
+        const newDeck = await repository.createDeck({
+          name: deckNameFromFile(file.name),
+          description: `CSV imported ${cards.length} vocabulary cards`,
+          cards: [],
+          folderIds: [],
+        });
+        targetDeckId = newDeck.id;
+        createdDeckId = newDeck.id;
+      }
+
+      await repository.bulkImportCards(targetDeckId, {
+        deckName: '',
+        cards,
       });
-      targetDeckId = newDeck.id;
+    } catch (error) {
+      if (createdDeckId) {
+        try {
+          await repository.deleteDeck(createdDeckId);
+        } catch (cleanupError) {
+          console.error('Failed to clean up the empty import deck:', cleanupError);
+        }
+      }
+      throw error;
     }
 
-    await repository.bulkImportCards(targetDeckId, {
-      deckName: '',
-      cards,
-    });
-
-    setToastMessage(`Successfully imported ${cards.length} vocabulary cards!`);
-    setShowToast(true);
+    const skippedMessage =
+      result.skippedRows > 0
+        ? ` ${result.skippedRows} incomplete ${result.skippedRows === 1 ? 'row was' : 'rows were'} skipped.`
+        : '';
+    showFileSuccess(
+      file.name,
+      `Imported ${cards.length} vocabulary ${cards.length === 1 ? 'card' : 'cards'}.${skippedMessage}`
+    );
     setTimeout(() => {
       history.push(`/deck/${targetDeckId}`);
     }, 2000);
@@ -119,7 +155,13 @@ const Import: React.FC = () => {
 
   const isCsvFile = (file: File) => {
     const mimeType = file.type.toLowerCase();
-    return file.name.toLowerCase().endsWith('.csv') || mimeType.includes('csv');
+    const fileName = file.name.toLowerCase();
+    return (
+      fileName.endsWith('.csv') ||
+      fileName.endsWith('.tsv') ||
+      mimeType.includes('csv') ||
+      mimeType.includes('tab-separated-values')
+    );
   };
 
   const deckNameFromFile = (fileName: string) => {
@@ -127,22 +169,32 @@ const Import: React.FC = () => {
     return withoutExtension.replace(/[-_]+/g, ' ').trim() || 'Imported Vocabulary';
   };
 
+  const showFileSuccess = (fileName: string, message: string) => {
+    setFileFeedback({ kind: 'success', message, fileName });
+    setToastColor('success');
+    setToastMessage(message);
+    setShowToast(true);
+  };
+
+  const showErrorToast = (message: string) => {
+    setToastColor('danger');
+    setToastMessage(message);
+    setShowToast(true);
+  };
+
   const handleBulkImport = async () => {
     if (!bulkText.trim()) {
-      setToastMessage('Please provide card data');
-      setShowToast(true);
+      showErrorToast('Please provide card data');
       return;
     }
 
     if (importTarget === 'new' && !deckName.trim()) {
-      setToastMessage('Please provide a deck name for the new deck');
-      setShowToast(true);
+      showErrorToast('Please provide a deck name for the new deck');
       return;
     }
 
     if (importTarget === 'existing' && !selectedDeckId) {
-      setToastMessage('Please select a deck to import into');
-      setShowToast(true);
+      showErrorToast('Please select a deck to import into');
       return;
     }
 
@@ -184,6 +236,7 @@ const Import: React.FC = () => {
 
       await repository.bulkImportCards(targetDeckId, bulkData);
 
+      setToastColor('success');
       setToastMessage(`Successfully imported ${cards.length} cards!`);
       setShowToast(true);
       setTimeout(() => {
@@ -191,8 +244,7 @@ const Import: React.FC = () => {
       }, 2000);
     } catch (error: unknown) {
       console.error('Bulk import error:', error);
-      setToastMessage(errorMessage(error, 'Bulk import failed. Please check the format.'));
-      setShowToast(true);
+      showErrorToast(errorMessage(error, 'Bulk import failed. Please check the format.'));
     }
   };
 
@@ -228,7 +280,7 @@ const Import: React.FC = () => {
               <IonCardContent>
                 <div className="import-info">
                   <p>
-                    Upload a JSON backup/deck, or a vocabulary CSV with context sentences.
+                    Upload a JSON backup/deck, or a vocabulary CSV/TSV with context sentences.
                   </p>
                   <p>CSV columns are read from the header row:</p>
                   <code>word, translation, context, context_translated, occurrences, forms</code>
@@ -236,19 +288,51 @@ const Import: React.FC = () => {
                     CSV cards use the word as the front, then include the translation, source
                     context, translated context, occurrence count, and forms on the back.
                   </p>
+                  <p>
+                    Comma, semicolon, and tab separators are detected automatically. UTF-8 and
+                    UTF-16 files are supported.
+                  </p>
                 </div>
 
                 <div className="file-input-wrapper">
                   <input
                     type="file"
-                    accept=".json,.csv,application/json,text/csv"
+                    accept=".json,.csv,.tsv,application/json,text/csv,text/tab-separated-values"
                     onChange={handleFileImport}
                     id="file-input"
+                    disabled={isImporting}
                   />
-                  <label htmlFor="file-input" className="file-input-label">
-                    Choose File
+                  <label
+                    htmlFor="file-input"
+                    className={`file-input-label${isImporting ? ' file-input-label-disabled' : ''}`}
+                    aria-disabled={isImporting}
+                  >
+                    {isImporting && <IonSpinner name="crescent" />}
+                    {isImporting ? 'Importing…' : 'Choose File'}
                   </label>
                 </div>
+
+                {fileFeedback && (
+                  <div
+                    className={`import-feedback import-feedback-${fileFeedback.kind}`}
+                    role={fileFeedback.kind === 'error' ? 'alert' : 'status'}
+                  >
+                    <IonIcon
+                      icon={
+                        fileFeedback.kind === 'error'
+                          ? alertCircleOutline
+                          : checkmarkCircleOutline
+                      }
+                    />
+                    <div>
+                      <strong>{fileFeedback.fileName}</strong>
+                      <p>{fileFeedback.message}</p>
+                      {fileFeedback.kind === 'error' && (
+                        <small>You can fix the file and choose it again immediately.</small>
+                      )}
+                    </div>
+                  </div>
+                )}
               </IonCardContent>
             </IonCard>
           ) : (
@@ -357,7 +441,8 @@ What is TypeScript? | A typed superset of JavaScript
           isOpen={showToast}
           onDidDismiss={() => setShowToast(false)}
           message={toastMessage}
-          duration={3000}
+          duration={toastColor === 'danger' ? 6000 : 3000}
+          color={toastColor}
         />
       </IonContent>
     </IonPage>

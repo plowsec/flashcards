@@ -58,7 +58,9 @@
 }
 
 .file-input-label {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 12px 24px;
   background: var(--ion-color-primary);
   color: white;
@@ -70,6 +72,58 @@
 
 .file-input-label:hover {
   background: var(--ion-color-primary-shade);
+}
+
+.file-input-label-disabled {
+  cursor: wait;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.file-input-label ion-spinner {
+  width: 18px;
+  height: 18px;
+}
+
+.import-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid;
+  border-radius: 8px;
+}
+
+.import-feedback ion-icon {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  font-size: 24px;
+}
+
+.import-feedback strong {
+  overflow-wrap: anywhere;
+}
+
+.import-feedback p {
+  margin: 4px 0;
+  line-height: 1.4;
+}
+
+.import-feedback small {
+  opacity: 0.8;
+}
+
+.import-feedback-success {
+  color: var(--ion-color-success-shade);
+  background: rgba(var(--ion-color-success-rgb), 0.1);
+  border-color: rgba(var(--ion-color-success-rgb), 0.35);
+}
+
+.import-feedback-error {
+  color: var(--ion-color-danger-shade);
+  background: rgba(var(--ion-color-danger-rgb), 0.1);
+  border-color: rgba(var(--ion-color-danger-rgb), 0.35);
 }
 
 .bulk-textarea {
