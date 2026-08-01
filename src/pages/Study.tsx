@@ -12,8 +12,6 @@ import {
   IonIcon,
   IonCard,
   IonCardContent,
-  IonSelect,
-  IonSelectOption,
   IonLabel,
   IonProgressBar,
   IonAlert,
@@ -24,9 +22,7 @@ import {
   IonModal,
   IonTextarea,
   IonSpinner,
-  IonAccordion,
-  IonAccordionGroup,
-  IonItem,
+  IonFooter,
 } from '@ionic/react';
 import { checkmark, close, refresh, timer, bulb, send, create, swapHorizontal, save, bookmarkOutline, layers, school, clipboard, shuffle, sparkles, time, trendingDown, help, dice, list, removeCircle, arrowForward, arrowBack, swapVertical } from 'ionicons/icons';
 import ReactMarkdown from 'react-markdown';
@@ -98,6 +94,7 @@ const Study: React.FC = () => {
 
   // For card order reversal
   const [reverseCardOrder, setReverseCardOrder] = useState(false);
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
 
   const repository = getDataRepository();
 
@@ -383,44 +380,52 @@ const Study: React.FC = () => {
   };
 
   const handleAnswerResult = async (quality: ReviewResult['quality']) => {
-    if (!deck || studyCards.length === 0) return;
+    if (!deck || studyCards.length === 0 || isSubmittingRating) return;
 
     const currentCard = studyCards[currentCardIndex];
-    
-    // Calculate next review using SM-2
-    const sm2Result = SpacedRepetitionService.calculateNextReview(currentCard, quality);
-    const difficulty = SpacedRepetitionService.qualityToDifficulty(quality);
 
-    // Update card in repository
-    await repository.updateCard(deck.id, currentCard.id, {
-      ...sm2Result,
-      difficulty,
-      lastReviewDate: new Date(),
-    });
+    setIsSubmittingRating(true);
+    try {
+      // Calculate next review using SM-2
+      const sm2Result = SpacedRepetitionService.calculateNextReview(currentCard, quality);
+      const difficulty = SpacedRepetitionService.qualityToDifficulty(quality);
 
-    // Update statistics
-    setCardsStudied(cardsStudied + 1);
-    if (quality >= 3) {
-      setCorrectAnswers(correctAnswers + 1);
-    }
+      // Update card in repository
+      await repository.updateCard(deck.id, currentCard.id, {
+        ...sm2Result,
+        difficulty,
+        lastReviewDate: new Date(),
+      });
 
-    // Move to next card or complete session
-    if (currentCardIndex < studyCards.length - 1) {
-      const nextIndex = currentCardIndex + 1;
-      setCurrentCardIndex(nextIndex);
-      setShowAnswer(false);
-      setUserAnswer('');
-      setAnswerFeedback(null);
-      setSelectedOption(null);
-      
-      // Generate new multiple choice options if needed
-      if (interactionType === 'learn' || interactionType === 'test') {
-        generateMultipleChoiceForCurrentCard(studyCards, nextIndex);
-      } else if (interactionType === 'ai-quiz') {
-        generateAIOptionsForCurrentCard(studyCards[nextIndex]);
+      // Update statistics
+      const completedCards = cardsStudied + 1;
+      const completedCorrectAnswers = correctAnswers + (quality >= 3 ? 1 : 0);
+      setCardsStudied(completedCards);
+      setCorrectAnswers(completedCorrectAnswers);
+
+      // Move to next card or complete session
+      if (currentCardIndex < studyCards.length - 1) {
+        const nextIndex = currentCardIndex + 1;
+        setCurrentCardIndex(nextIndex);
+        setShowAnswer(false);
+        setUserAnswer('');
+        setAnswerFeedback(null);
+        setSelectedOption(null);
+
+        // Generate new multiple choice options if needed
+        if (interactionType === 'learn' || interactionType === 'test') {
+          generateMultipleChoiceForCurrentCard(studyCards, nextIndex);
+        } else if (interactionType === 'ai-quiz') {
+          generateAIOptionsForCurrentCard(studyCards[nextIndex]);
+        }
+      } else {
+        await completeSession({
+          cardsStudied: completedCards,
+          correctAnswers: completedCorrectAnswers,
+        });
       }
-    } else {
-      await completeSession();
+    } finally {
+      setIsSubmittingRating(false);
     }
   };
 
@@ -479,7 +484,12 @@ const Study: React.FC = () => {
     }
   };
 
-  const completeSession = async () => {
+  const completeSession = async (
+    finalStats: { cardsStudied: number; correctAnswers: number } = {
+      cardsStudied,
+      correctAnswers,
+    }
+  ) => {
     if (!deck) return;
 
     // Save study session
@@ -487,8 +497,8 @@ const Study: React.FC = () => {
       deckId: deck.id,
       startTime: sessionStartTime,
       endTime: new Date(),
-      cardsStudied: interactionType === 'match' ? matchPairs.length : cardsStudied,
-      correctAnswers: interactionType === 'match' ? matchPairs.length : correctAnswers,
+      cardsStudied: interactionType === 'match' ? matchPairs.length : finalStats.cardsStudied,
+      correctAnswers: interactionType === 'match' ? matchPairs.length : finalStats.correctAnswers,
     });
 
     setShowCompleteAlert(true);
@@ -668,6 +678,7 @@ const Study: React.FC = () => {
     setAnswerFeedback(null);
     setSelectedOption(null);
     setCardProgress(new Map());
+    setIsSubmittingRating(false);
   };
 
   const handleCompleteAlertDismiss = () => {
@@ -682,6 +693,12 @@ const Study: React.FC = () => {
   const currentCard = studyCards[currentCardIndex];
   const progress = studyCards.length > 0 ? (currentCardIndex + 1) / studyCards.length : 0;
   const currentQuestionType = getCurrentQuestionType();
+  const showRatingDock =
+    sessionStarted &&
+    studyCards.length > 0 &&
+    interactionType !== 'match' &&
+    currentQuestionType === 'flashcard' &&
+    showAnswer;
 
   // Render Match Mode
   const renderMatchMode = () => {
@@ -710,7 +727,7 @@ const Study: React.FC = () => {
         <div className="match-grid">
           <div className="match-column">
             <h3>Questions</h3>
-            {fronts.map((pair, index) => {
+            {fronts.map((pair) => {
               const originalIndex = matchPairs.indexOf(pair);
               const isMatched = matchedPairs.has(originalIndex);
               const isSelected = selectedFront === originalIndex;
@@ -733,7 +750,7 @@ const Study: React.FC = () => {
           
           <div className="match-column">
             <h3>Answers</h3>
-            {backs.map((pair, index) => {
+            {backs.map((pair) => {
               const originalIndex = matchPairs.indexOf(pair);
               const isMatched = matchedPairs.has(originalIndex);
               const isSelected = selectedBack === originalIndex;
@@ -916,7 +933,7 @@ const Study: React.FC = () => {
     return (
       <div className="question-container">
         <IonCard
-          className="flashcard"
+          className={`flashcard${showAnswer ? ' flashcard-answer' : ''}`}
           onClick={() => !showAnswer && setShowAnswer(true)}
           style={{ cursor: !showAnswer ? 'pointer' : 'default' }}
         >
@@ -951,7 +968,7 @@ const Study: React.FC = () => {
           </IonCardContent>
         </IonCard>
 
-        {!showAnswer ? (
+        {!showAnswer && (
           <IonButton
             expand="block"
             onClick={() => setShowAnswer(true)}
@@ -959,30 +976,6 @@ const Study: React.FC = () => {
           >
             Show Answer
           </IonButton>
-        ) : (
-          <div className="rating-buttons">
-            <h3>How well did you know this?</h3>
-            <div className="rating-grid-simple">
-              <IonButton color="danger" onClick={() => handleAnswerResult(1)} className="rating-btn-simple">
-                <div>
-                  <IonIcon icon={close} />
-                  <div className="rating-label-desktop">Didn't Know</div>
-                </div>
-              </IonButton>
-              <IonButton color="warning" onClick={() => handleAnswerResult(3)} className="rating-btn-simple">
-                <div>
-                  <IonIcon icon={removeCircle} />
-                  <div className="rating-label-desktop">Hard</div>
-                </div>
-              </IonButton>
-              <IonButton color="success" onClick={() => handleAnswerResult(5)} className="rating-btn-simple">
-                <div>
-                  <IonIcon icon={checkmark} />
-                  <div className="rating-label-desktop">Easy</div>
-                </div>
-              </IonButton>
-            </div>
-          </div>
         )}
 
         {showAnswer && (openAIService.hasApiKey() || currentCard.savedExplanation) && (
@@ -1016,7 +1009,7 @@ const Study: React.FC = () => {
           </IonButtons>
         </IonToolbar>
       </IonHeader>
-      <IonContent fullscreen>
+      <IonContent fullscreen className="study-content">
         <div className="study-container">
           {!sessionStarted ? (
             <div className="study-setup">
@@ -1486,6 +1479,66 @@ const Study: React.FC = () => {
           </IonContent>
         </IonModal>
       </IonContent>
+
+      {showRatingDock && (
+        <IonFooter className="study-rating-footer">
+          <IonToolbar>
+            <div className="rating-dock">
+              <div className="rating-dock-heading">
+                <strong>How well did you know this?</strong>
+                <span>Rate it to continue</span>
+              </div>
+              <div className="rating-grid-simple" aria-label="Rate your recall">
+                <IonButton
+                  color="success"
+                  onClick={() => handleAnswerResult(5)}
+                  className="rating-btn-simple"
+                  disabled={isSubmittingRating}
+                  aria-label="Easy — I knew it"
+                >
+                  <span className="rating-action-content">
+                    <IonIcon icon={checkmark} />
+                    <span>
+                      <strong>Easy</strong>
+                      <small>I knew it</small>
+                    </span>
+                  </span>
+                </IonButton>
+                <IonButton
+                  color="warning"
+                  onClick={() => handleAnswerResult(3)}
+                  className="rating-btn-simple"
+                  disabled={isSubmittingRating}
+                  aria-label="Hard — I hesitated"
+                >
+                  <span className="rating-action-content">
+                    <IonIcon icon={removeCircle} />
+                    <span>
+                      <strong>Hard</strong>
+                      <small>I hesitated</small>
+                    </span>
+                  </span>
+                </IonButton>
+                <IonButton
+                  color="danger"
+                  onClick={() => handleAnswerResult(1)}
+                  className="rating-btn-simple"
+                  disabled={isSubmittingRating}
+                  aria-label="Again — I did not know it"
+                >
+                  <span className="rating-action-content">
+                    <IonIcon icon={close} />
+                    <span>
+                      <strong>Again</strong>
+                      <small>Didn't know</small>
+                    </span>
+                  </span>
+                </IonButton>
+              </div>
+            </div>
+          </IonToolbar>
+        </IonFooter>
+      )}
     </IonPage>
   );
 };
